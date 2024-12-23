@@ -239,19 +239,11 @@ struct KategorieSheet: View {
     @Binding var tisch: Tisch
     let kategorie: Kategorie
     @Binding var zeigeSheet: Bool
-    @State private var vorherigerPreis: Double = 0.0
+    @State private var vorherigerPreis: Double = 0.0 // Speichert den vorherigen Preis
 
     var body: some View {
         NavigationView {
             VStack {
-                // Anzeige der Preisänderung
-                if vorherigerPreis != berechneGesamtpreis() {
-                    Text("Der Preis wurde aktualisiert!")
-                        .font(.headline)
-                        .foregroundColor(.red)
-                        .padding()
-                }
-
                 // Liste der Artikel in der ausgewählten Kategorie
                 List($tisch.artikel.filter { $0.wrappedValue.kategorie == kategorie }) { $artikel in
                     HStack {
@@ -263,7 +255,8 @@ struct KategorieSheet: View {
                             .frame(width: 50)
                             .keyboardType(.numberPad)
                             .onChange(of: artikel.anzahl) { _ in
-                                vorherigerPreis = berechneGesamtpreis()
+                                // Aktualisiere die Preisänderung
+                                updatePreisÄnderung()
                             }
                     }
                 }
@@ -279,8 +272,21 @@ struct KategorieSheet: View {
                 }
                 .padding()
 
+                // Anzeige der Preisänderung
+                HStack {
+                    Text("Preisänderung: ")
+                        .font(.headline)
+                    Spacer()
+                    Text("\(String(format: "%.2f", berechnePreisänderung())) €")
+                        .font(.headline)
+                        .foregroundColor(berechnePreisänderung() >= 0 ? .green : .red)
+                }
+                .padding()
+
                 // Schließen-Button
                 Button(action: {
+                    // Aktualisiere vorherigen Preis beim Schließen
+                    vorherigerPreis = berechneGesamtpreis()
                     zeigeSheet = false
                 }) {
                     Text("Schließen")
@@ -293,7 +299,10 @@ struct KategorieSheet: View {
                 .padding()
             }
             .onAppear {
-                vorherigerPreis = berechneGesamtpreis()
+                // Initialisiere den vorherigen Preis beim Öffnen des Sheets
+                if vorherigerPreis == 0.0 {
+                    vorherigerPreis = berechneGesamtpreis()
+                }
             }
             .navigationTitle(kategorie.rawValue)
         }
@@ -305,7 +314,22 @@ struct KategorieSheet: View {
             sum + (Double(artikel.anzahl) * artikel.preis)
         }
     }
+
+    // Funktion zur Berechnung der Preisänderung
+    func berechnePreisänderung() -> Double {
+        berechneGesamtpreis() - vorherigerPreis
+    }
+
+    // Funktion zum Aktualisieren der Preisänderung
+    func updatePreisÄnderung() {
+        let neuerPreis = berechneGesamtpreis()
+        vorherigerPreis = vorherigerPreis == 0.0 ? neuerPreis : vorherigerPreis
+    }
 }
+
+
+
+
 
 
 // Vorschau
