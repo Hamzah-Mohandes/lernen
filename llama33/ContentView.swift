@@ -135,9 +135,18 @@
 //}
 
 
+
 import SwiftUI
 
-// Modell für Artikel
+// Kategorie für Artikel
+enum Kategorie: String, Identifiable, CaseIterable, Codable {
+    case getränke = "Getränke"
+    case kuchen = "Kuchen"
+    
+    var id: String { self.rawValue }
+}
+
+// Model für Artikel (Getränke oder Kuchen)
 struct Artikel: Identifiable, Codable {
     var id = UUID()
     let name: String
@@ -146,135 +155,103 @@ struct Artikel: Identifiable, Codable {
     let kategorie: Kategorie
 }
 
-// Enum für Kategorien
-enum Kategorie: String, Codable, CaseIterable, Identifiable {
-    case getränke = "Getränke"
-    case kuchen = "Kuchen"
-    var id: String { self.rawValue }
-}
-
-// Modell für Tisch
+// Model für Tisch
 struct Tisch: Identifiable, Codable {
     let id: Int
     var artikel: [Artikel]
-    var geschlossen: Bool = false
 
-    // Beispiel-Daten für Artikel
-    static let beispielArtikel: [Artikel] = [
-        Artikel(name: "Cola", preis: 3.50, anzahl: 0, kategorie: .getränke),
-        Artikel(name: "Bier", preis: 4.00, anzahl: 0, kategorie: .getränke),
-        Artikel(name: "Wein", preis: 5.50, anzahl: 0, kategorie: .getränke),
-        Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 0, kategorie: .kuchen),
-        Artikel(name: "Schwarzwälder", preis: 5.00, anzahl: 0, kategorie: .kuchen)
-    ]
-
-    // Alle Tische erstellen
     static let anzahlTische = 15
 
     static func alleTische() -> [Tisch] {
-        return (1...anzahlTische).map {
-            Tisch(id: $0, artikel: beispielArtikel)
+        let artikelListe = [
+            Artikel(name: "Cola", preis: 3.50, anzahl: 0, kategorie: .getränke),
+            Artikel(name: "Bier", preis: 4.00, anzahl: 0, kategorie: .getränke),
+            Artikel(name: "Wein", preis: 5.50, anzahl: 0, kategorie: .getränke),
+            Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 0, kategorie: .kuchen),
+            Artikel(name: "Schokokuchen", preis: 5.00, anzahl: 0, kategorie: .kuchen)
+        ]
+        return (1...anzahlTische).map { Tisch(id: $0, artikel: artikelListe) }
+    }
+
+    // Berechne den Gesamtpreis für diesen Tisch
+    func berechneGesamtpreis() -> Double {
+        artikel.reduce(0) { sum, artikel in
+            sum + (Double(artikel.anzahl) * artikel.preis)
         }
     }
 }
 
 // Hauptansicht
 struct ContentView: View {
-    @State private var tische: [Tisch] = Tisch.alleTische()
+    @State private var tische: [Tisch] = Tisch.alleTische() // Alle Tische initialisieren
 
     var body: some View {
         NavigationView {
-            List($tische) { $tisch in
-                HStack {
-                    NavigationLink(destination: TischDetailView(tisch: $tisch)) {
-                        Text("Tisch \(tisch.id)")
+            List(tische) { tisch in
+                NavigationLink(destination: KategorieView(tisch: Binding(
+                    get: { tische[tische.firstIndex(where: { $0.id == tisch.id })!] },
+                    set: { newValue in
+                        if let index = tische.firstIndex(where: { $0.id == tisch.id }) {
+                            tische[index] = newValue
+                        }
                     }
-                    Spacer()
-                    Text("\(String(format: "%.2f", berechneGesamtpreis(tisch: tisch))) €")
-                        .foregroundColor(.blue)
+                ))) {
+                    VStack(alignment: .leading) {
+                        Text("Tisch \(tisch.id)")
+                            .font(.headline)
+                        Text("Gesamtpreis: \(String(format: "%.2f", tisch.berechneGesamtpreis())) €")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                    }
                 }
             }
             .navigationTitle("Tische")
         }
     }
-
-    // Funktion zur Berechnung des Gesamtpreises pro Tisch
-    func berechneGesamtpreis(tisch: Tisch) -> Double {
-        tisch.artikel.reduce(0) { sum, artikel in
-            sum + (Double(artikel.anzahl) * artikel.preis)
-        }
-    }
 }
 
-// Detailansicht für einen Tisch
-struct TischDetailView: View {
+// Ansicht für Kategorien
+struct KategorieView: View {
     @Binding var tisch: Tisch
-    @State private var zeigeSheet: Bool = false
     @State private var ausgewählteKategorie: Kategorie?
+    @State private var zeigeSheet: Bool = false
 
     var body: some View {
-        VStack {
-            // Buttons für Kategorien
-            ForEach(Kategorie.allCases) { kategorie in
-                Button(action: {
-                    ausgewählteKategorie = kategorie
-                    zeigeSheet = true
-                }) {
-                    Text(kategorie.rawValue)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                }
-            }
-
-            Spacer()
-
-            // Gesamtpreis des Tisches anzeigen
-            Text("Gesamtpreis: \(String(format: "%.2f", berechneGesamtpreis())) €")
-                .font(.headline)
-                .padding()
-
-            // Schließen-Button
+        List(Kategorie.allCases) { kategorie in
             Button(action: {
-                tisch.geschlossen.toggle()
+                ausgewählteKategorie = kategorie
+                zeigeSheet = true
             }) {
-                Text(tisch.geschlossen ? "Tisch wieder öffnen" : "Tisch schließen")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(tisch.geschlossen ? Color.red : Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
+                Text(kategorie.rawValue)
             }
         }
+        .navigationTitle("Tisch \(tisch.id)")
         .sheet(isPresented: $zeigeSheet) {
             if let kategorie = ausgewählteKategorie {
                 KategorieSheet(tisch: $tisch, kategorie: kategorie, zeigeSheet: $zeigeSheet)
             }
         }
-        .navigationTitle("Tisch \(tisch.id)")
-    }
-
-    // Funktion zur Berechnung des Gesamtpreises
-    func berechneGesamtpreis() -> Double {
-        tisch.artikel.reduce(0) { sum, artikel in
-            sum + (Double(artikel.anzahl) * artikel.preis)
-        }
     }
 }
 
-// Sheet für Artikel einer Kategorie
+// Eingabeformular für Artikelanzahl in der Kategorie
 struct KategorieSheet: View {
     @Binding var tisch: Tisch
     let kategorie: Kategorie
     @Binding var zeigeSheet: Bool
+    @State private var vorherigerPreis: Double = 0.0
 
     var body: some View {
         NavigationView {
             VStack {
+                // Anzeige der Preisänderung
+                if vorherigerPreis != berechneGesamtpreis() {
+                    Text("Der Preis wurde aktualisiert!")
+                        .font(.headline)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+
                 // Liste der Artikel in der ausgewählten Kategorie
                 List($tisch.artikel.filter { $0.wrappedValue.kategorie == kategorie }) { $artikel in
                     HStack {
@@ -285,6 +262,9 @@ struct KategorieSheet: View {
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .frame(width: 50)
                             .keyboardType(.numberPad)
+                            .onChange(of: artikel.anzahl) { _ in
+                                vorherigerPreis = berechneGesamtpreis()
+                            }
                     }
                 }
 
@@ -312,6 +292,9 @@ struct KategorieSheet: View {
                 }
                 .padding()
             }
+            .onAppear {
+                vorherigerPreis = berechneGesamtpreis()
+            }
             .navigationTitle(kategorie.rawValue)
         }
     }
@@ -324,6 +307,8 @@ struct KategorieSheet: View {
     }
 }
 
+
+// Vorschau
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         ContentView()
