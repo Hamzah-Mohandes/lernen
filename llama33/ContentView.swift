@@ -221,7 +221,7 @@ struct ContentView: View {
                 ToolbarItem(placement: .principal) {
                     Text("Tische")
                         .font(.largeTitle)
-                        .foregroundColor(.blue) // Hauptfarbe
+                        .foregroundColor(Color("MainC")) // Hauptfarbe
                         .padding(.top, 20)
                     
                 }
@@ -247,7 +247,7 @@ struct KategorieView: View {
             }) {
                 HStack {
                     Image(systemName: kategorie == .getränke ? "cup.and.saucer.fill" : "birthday.cake.fill")
-                        .foregroundColor(.blue) // Hauptfarbe
+                        .foregroundColor(Color("MainC")) // Hauptfarbe
                     Text(kategorie.rawValue)
                         .foregroundColor(.blue) // Hauptfarbe
                 }
@@ -258,7 +258,7 @@ struct KategorieView: View {
             ToolbarItem(placement: .principal) {
                 Text("Tische \(tisch.id)")
                     .font(.largeTitle)
-                    .foregroundColor(.blue) // Hauptfarbe
+                    .foregroundColor(Color("MainC")) // Hauptfarbe
                     .padding(.top, 20)
             }
         }
@@ -305,7 +305,7 @@ struct KategorieSheet: View {
                     Spacer()
                     Text("\(String(format: "%.2f", berechneGesamtpreis())) €")
                         .font(.headline)
-                        .foregroundColor(.blue) // Hauptfarbe
+                        .foregroundColor(Color("MainC")) // Hauptfarbe
                 }
                 .padding()
 
@@ -329,7 +329,7 @@ struct KategorieSheet: View {
                     Text("Schließen")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue) // Hauptfarbe
+                        .background(Color("MainC")) // Hauptfarbe
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
