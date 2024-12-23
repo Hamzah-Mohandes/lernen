@@ -142,7 +142,7 @@ import SwiftUI
 enum Kategorie: String, Identifiable, CaseIterable, Codable {
     case getränke = "Getränke"
     case kuchen = "Kuchen"
-    
+
     var id: String { self.rawValue }
 }
 
@@ -197,15 +197,38 @@ struct ContentView: View {
                     }
                 ))) {
                     VStack(alignment: .leading) {
-                        Text("Tisch \(tisch.id)")
-                            .font(.headline)
-                        Text("Gesamtpreis: \(String(format: "%.2f", tisch.berechneGesamtpreis())) €")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+                        HStack {
+                            Text("Tisch \(tisch.id)")
+                                .font(.headline)
+                            
+                            Text("Gesamtpreis: \(String(format: "%.2f", tisch.berechneGesamtpreis())) €")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        
+                       
                     }
+                 
+                    
                 }
             }
-            .navigationTitle("Tische")
+            .navigationTitle("")
+            .font(.title)
+            .accentColor(.blue) // Hauptfarbe
+            .background(Color(.systemGray6)) // Hintergrundfarbe
+            .toolbar{
+                ToolbarItem(placement: .principal) {
+                    Text("Tische")
+                        .font(.largeTitle)
+                        .foregroundColor(.blue) // Hauptfarbe
+                        .padding(.top, 20)
+                    
+                }
+                    
+                
+            }
+            
         }
     }
 }
@@ -222,15 +245,29 @@ struct KategorieView: View {
                 ausgewählteKategorie = kategorie
                 zeigeSheet = true
             }) {
-                Text(kategorie.rawValue)
+                HStack {
+                    Image(systemName: kategorie == .getränke ? "cup.and.saucer.fill" : "birthday.cake.fill")
+                        .foregroundColor(.blue) // Hauptfarbe
+                    Text(kategorie.rawValue)
+                        .foregroundColor(.blue) // Hauptfarbe
+                }
             }
         }
-        .navigationTitle("Tisch \(tisch.id)")
+        .navigationTitle("")
+        .toolbar{
+            ToolbarItem(placement: .principal) {
+                Text("Tische \(tisch.id)")
+                    .font(.largeTitle)
+                    .foregroundColor(.blue) // Hauptfarbe
+                    .padding(.top, 20)
+            }
+        }
         .sheet(isPresented: $zeigeSheet) {
             if let kategorie = ausgewählteKategorie {
                 KategorieSheet(tisch: $tisch, kategorie: kategorie, zeigeSheet: $zeigeSheet)
             }
         }
+        .background(Color(.systemGray6)) // Hintergrundfarbe
     }
 }
 
@@ -268,7 +305,7 @@ struct KategorieSheet: View {
                     Spacer()
                     Text("\(String(format: "%.2f", berechneGesamtpreis())) €")
                         .font(.headline)
-                        .foregroundColor(.blue)
+                        .foregroundColor(.blue) // Hauptfarbe
                 }
                 .padding()
 
@@ -279,7 +316,7 @@ struct KategorieSheet: View {
                     Spacer()
                     Text("\(String(format: "%.2f", berechnePreisänderung())) €")
                         .font(.headline)
-                        .foregroundColor(berechnePreisänderung() >= 0 ? .green : .red)
+                        .foregroundColor(berechnePreisänderung() >= 0 ? .green : .red) // Akzentfarbe
                 }
                 .padding()
 
@@ -292,7 +329,7 @@ struct KategorieSheet: View {
                     Text("Schließen")
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(Color.blue) // Hauptfarbe
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
@@ -305,6 +342,7 @@ struct KategorieSheet: View {
                 }
             }
             .navigationTitle(kategorie.rawValue)
+            .background(Color(.systemGray6)) // Hintergrundfarbe
         }
     }
 
@@ -326,11 +364,6 @@ struct KategorieSheet: View {
         vorherigerPreis = vorherigerPreis == 0.0 ? neuerPreis : vorherigerPreis
     }
 }
-
-
-
-
-
 
 // Vorschau
 struct ContentView_Previews: PreviewProvider {
