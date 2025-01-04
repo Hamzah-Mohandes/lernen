@@ -137,8 +137,6 @@
 
 
 
-
-
 import SwiftUI
 
 // MARK: - Datenmodelle
@@ -327,19 +325,36 @@ struct ArtikelView: View {
     @Binding var tisch: Tisch
     let kategorie: Kategorie
     @Binding var bestellungen: [Tisch]
+    @State private var ausgewählterArtikelIndex: Int? = nil
 
     var body: some View {
-        List {
-            ForEach(tisch.artikel.indices.filter { tisch.artikel[$0].kategorie == kategorie }, id: \.self) { index in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(tisch.artikel[index].name)
-                        Text(String(format: "%.2f €", tisch.artikel[index].preis))
-                            .foregroundColor(.gray)
+        VStack {
+            // Liste der Artikel
+            List {
+                ForEach(Array(tisch.artikel.enumerated()).filter { $0.element.kategorie == kategorie }, id: \.element.id) { index, artikel in
+                    Button(action: {
+                        ausgewählterArtikelIndex = index
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(artikel.name)
+                                Text(String(format: "%.2f €", artikel.preis))
+                                    .foregroundColor(.gray)
+                            }
+                            Spacer()
+                            Text("\(artikel.anzahl)x")
+                        }
                     }
-                    
-                    Spacer()
-                    
+                }
+            }
+
+            // Steuerelemente für den ausgewählten Artikel
+            if let index = ausgewählterArtikelIndex {
+                VStack {
+                    Text("Ausgewählt: \(tisch.artikel[index].name)")
+                        .font(.headline)
+                        .padding()
+
                     HStack(spacing: 20) {
                         Button(action: {
                             if tisch.artikel[index].anzahl > 0 {
@@ -347,20 +362,27 @@ struct ArtikelView: View {
                             }
                         }) {
                             Image(systemName: "minus.circle.fill")
+                                .font(.largeTitle)
                                 .foregroundColor(.red)
                         }
-                        
+
                         Text("\(tisch.artikel[index].anzahl)")
-                            .frame(width: 30)
-                        
+                            .font(.title)
+                            .frame(width: 50)
+
                         Button(action: {
                             tisch.artikel[index].anzahl += 1
                         }) {
                             Image(systemName: "plus.circle.fill")
+                                .font(.largeTitle)
                                 .foregroundColor(.green)
                         }
                     }
+                    .padding()
                 }
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+                .padding()
             }
         }
         .navigationTitle(kategorie.rawValue)
