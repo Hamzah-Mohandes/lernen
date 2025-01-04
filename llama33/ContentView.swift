@@ -136,18 +136,21 @@
 
 
 
+
+
+
 import SwiftUI
 
-// Kategorie für Artikel
-enum Kategorie: String, Identifiable, CaseIterable, Codable {
+// MARK: - Datenmodelle
+
+enum Kategorie: String, Identifiable, CaseIterable, Codable, Hashable {
     case getränke = "Getränke"
     case kuchen = "Kuchen"
 
     var id: String { self.rawValue }
 }
 
-// Model für Artikel (Getränke oder Kuchen)
-struct Artikel: Identifiable, Codable {
+struct Artikel: Identifiable, Codable, Hashable {
     var id = UUID()
     let name: String
     let preis: Double
@@ -155,25 +158,10 @@ struct Artikel: Identifiable, Codable {
     let kategorie: Kategorie
 }
 
-// Model für Tisch
-struct Tisch: Identifiable, Codable {
+struct Tisch: Identifiable, Codable, Hashable {
     let id: Int
     var artikel: [Artikel]
 
-    static let anzahlTische = 15
-
-    static func alleTische() -> [Tisch] {
-        let artikelListe = [
-            Artikel(name: "Cola", preis: 3.50, anzahl: 0, kategorie: .getränke),
-            Artikel(name: "Bier", preis: 4.00, anzahl: 0, kategorie: .getränke),
-            Artikel(name: "Wein", preis: 5.50, anzahl: 0, kategorie: .getränke),
-            Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 0, kategorie: .kuchen),
-            Artikel(name: "Schokokuchen", preis: 5.00, anzahl: 0, kategorie: .kuchen)
-        ]
-        return (1...anzahlTische).map { Tisch(id: $0, artikel: artikelListe) }
-    }
-
-    // Berechne den Gesamtpreis für diesen Tisch
     func berechneGesamtpreis() -> Double {
         artikel.reduce(0) { sum, artikel in
             sum + (Double(artikel.anzahl) * artikel.preis)
@@ -181,193 +169,293 @@ struct Tisch: Identifiable, Codable {
     }
 }
 
-// Hauptansicht
+// MARK: - StateContainer
+class AppState: ObservableObject {
+    @Published var tische: [Tisch] = []
+    @Published var bestellungen: [Tisch] = []
+    @Published var ausgewählteTischnummer: Int?
+    @Published var navigationPath = NavigationPath()
+}
+
+// MARK: - Hauptansicht
 struct ContentView: View {
-    @State private var tische: [Tisch] = Tisch.alleTische() // Alle Tische initialisieren
+    @StateObject private var appState = AppState()
 
     var body: some View {
-        NavigationView {
-            List(tische) { tisch in
-                NavigationLink(destination: KategorieView(tisch: Binding(
-                    get: { tische[tische.firstIndex(where: { $0.id == tisch.id })!] },
-                    set: { newValue in
-                        if let index = tische.firstIndex(where: { $0.id == tisch.id }) {
-                            tische[index] = newValue
-                        }
-                    }
-                ))) {
-                    VStack(alignment: .leading) {
-                        HStack {
-                            Text("Tisch \(tisch.id)")
-                                .font(.headline)
-                            
-                            Text("Gesamtpreis: \(String(format: "%.2f", tisch.berechneGesamtpreis())) €")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                        .padding()
-                        
-                       
-                    }
-                 
-                    
-                }
+        TabView {
+            NavigationStack(path: $appState.navigationPath) {
+                HomeView(
+                    ausgewählteTischnummer: $appState.ausgewählteTischnummer,
+                    tische: $appState.tische,
+                    bestellungen: $appState.bestellungen
+                )
             }
-            .navigationTitle("")
-            .font(.title)
-            .accentColor(.blue) // Hauptfarbe
-            .background(Color(.systemGray6)) // Hintergrundfarbe
-            .toolbar{
-                ToolbarItem(placement: .principal) {
-                    Text("Tische")
-                        .font(.largeTitle)
-                        .foregroundColor(Color("MainC")) // Hauptfarbe
-                        .padding(.top, 20)
-                    
-                }
-                    
-                
+            .tabItem {
+                Image(systemName: "house.fill")
+                Text("Home")
             }
-            
+
+            KücheView(bestellungen: $appState.bestellungen)
+                .tabItem {
+                    Image(systemName: "fork.knife")
+                    Text("Küche")
+                }
+
+            KellnerView(
+                bestellungen: $appState.bestellungen,
+                tische: $appState.tische
+            )
+            .tabItem {
+                Image(systemName: "person.fill")
+                Text("Kellner")
+            }
         }
     }
 }
 
-// Ansicht für Kategorien
+// MARK: - HomeView
+struct HomeView: View {
+    @Binding var ausgewählteTischnummer: Int?
+    @Binding var tische: [Tisch]
+    @Binding var bestellungen: [Tisch]
+
+    var body: some View {
+        VStack {
+            if ausgewählteTischnummer == nil {
+                TischnummerEingabeView(ausgewählteTischnummer: $ausgewählteTischnummer, tische: $tische)
+            } else {
+                if let tisch = tische.first(where: { $0.id == ausgewählteTischnummer }) {
+                    KategorieView(
+                        tisch: Binding(
+                            get: { tisch },
+                            set: { newValue in
+                                if let index = tische.firstIndex(where: { $0.id == tisch.id }) {
+                                    tische[index] = newValue
+                                }
+                            }
+                        ),
+                        bestellungen: $bestellungen,
+                        ausgewählteTischnummer: $ausgewählteTischnummer
+                    )
+                } else {
+                    Text("Tisch nicht gefunden")
+                }
+            }
+        }
+        .navigationTitle("Home")
+    }
+}
+
+// MARK: - TischnummerEingabeView
+struct TischnummerEingabeView: View {
+    @Binding var ausgewählteTischnummer: Int?
+    @Binding var tische: [Tisch]
+    @State private var tischnummer: String = ""
+
+    var body: some View {
+        VStack(spacing: 20) {
+            TextField("Tischnummer eingeben", text: $tischnummer)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .keyboardType(.numberPad)
+                .padding()
+
+            Button(action: {
+                if let nummer = Int(tischnummer) {
+                    ausgewählteTischnummer = nummer
+                    if !tische.contains(where: { $0.id == nummer }) {
+                        tische.append(Tisch(id: nummer, artikel: [
+                            Artikel(name: "Cola", preis: 3.50, anzahl: 0, kategorie: .getränke),
+                            Artikel(name: "Bier", preis: 4.00, anzahl: 0, kategorie: .getränke),
+                            Artikel(name: "Wein", preis: 5.50, anzahl: 0, kategorie: .getränke),
+                            Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 0, kategorie: .kuchen),
+                            Artikel(name: "Schokokuchen", preis: 5.00, anzahl: 0, kategorie: .kuchen)
+                        ]))
+                    }
+                }
+            }) {
+                Text("Tisch auswählen")
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+        }
+        .padding()
+    }
+}
+
+// MARK: - KategorieView
 struct KategorieView: View {
     @Binding var tisch: Tisch
-    @State private var ausgewählteKategorie: Kategorie?
-    @State private var zeigeSheet: Bool = false
+    @Binding var bestellungen: [Tisch]
+    @Binding var ausgewählteTischnummer: Int?
 
     var body: some View {
         List(Kategorie.allCases) { kategorie in
-            Button(action: {
-                ausgewählteKategorie = kategorie
-                zeigeSheet = true
-            }) {
+            NavigationLink(value: kategorie) {
                 HStack {
                     Image(systemName: kategorie == .getränke ? "cup.and.saucer.fill" : "birthday.cake.fill")
-                        .foregroundColor(Color("MainC")) // Hauptfarbe
                     Text(kategorie.rawValue)
-                        .foregroundColor(.blue) // Hauptfarbe
                 }
             }
         }
-        .navigationTitle("")
-        .toolbar{
-            ToolbarItem(placement: .principal) {
-                Text("Tische \(tisch.id)")
-                    .font(.largeTitle)
-                    .foregroundColor(Color("MainC")) // Hauptfarbe
-                    .padding(.top, 20)
+        .navigationDestination(for: Kategorie.self) { kategorie in
+            ArtikelView(
+                tisch: $tisch,
+                kategorie: kategorie,
+                bestellungen: $bestellungen
+            )
+        }
+        .navigationTitle("Tisch \(tisch.id)")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Fertig") {
+                    if let index = bestellungen.firstIndex(where: { $0.id == tisch.id }) {
+                        bestellungen[index] = tisch
+                    } else {
+                        bestellungen.append(tisch)
+                    }
+                    ausgewählteTischnummer = nil
+                }
             }
         }
-        .sheet(isPresented: $zeigeSheet) {
-            if let kategorie = ausgewählteKategorie {
-                KategorieSheet(tisch: $tisch, kategorie: kategorie, zeigeSheet: $zeigeSheet)
-            }
-        }
-        .background(Color(.systemGray6)) // Hintergrundfarbe
     }
 }
 
-// Eingabeformular für Artikelanzahl in der Kategorie
-struct KategorieSheet: View {
+// MARK: - ArtikelView
+struct ArtikelView: View {
     @Binding var tisch: Tisch
     let kategorie: Kategorie
-    @Binding var zeigeSheet: Bool
-    @State private var vorherigerPreis: Double = 0.0 // Speichert den vorherigen Preis
+    @Binding var bestellungen: [Tisch]
+
+    var body: some View {
+        List {
+            ForEach(tisch.artikel.indices.filter { tisch.artikel[$0].kategorie == kategorie }, id: \.self) { index in
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(tisch.artikel[index].name)
+                        Text(String(format: "%.2f €", tisch.artikel[index].preis))
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Spacer()
+                    
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            if tisch.artikel[index].anzahl > 0 {
+                                tisch.artikel[index].anzahl -= 1
+                            }
+                        }) {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundColor(.red)
+                        }
+                        
+                        Text("\(tisch.artikel[index].anzahl)")
+                            .frame(width: 30)
+                        
+                        Button(action: {
+                            tisch.artikel[index].anzahl += 1
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.green)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle(kategorie.rawValue)
+    }
+}
+
+// MARK: - KücheView
+struct KücheView: View {
+    @Binding var bestellungen: [Tisch]
 
     var body: some View {
         NavigationView {
-            VStack {
-                // Liste der Artikel in der ausgewählten Kategorie
-                List($tisch.artikel.filter { $0.wrappedValue.kategorie == kategorie }) { $artikel in
-                    HStack {
-                        Text(artikel.name)
-                        Spacer()
-                        Text("\(String(format: "%.2f", artikel.preis)) €")
-                        TextField("Anzahl", value: $artikel.anzahl, formatter: NumberFormatter())
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .frame(width: 50)
-                            .keyboardType(.numberPad)
-                            .onChange(of: artikel.anzahl) { _ in
-                                // Aktualisiere die Preisänderung
-                                updatePreisÄnderung()
+            List {
+                ForEach(bestellungen) { tisch in
+                    if tisch.artikel.contains(where: { $0.anzahl > 0 }) {
+                        Section(header: Text("Tisch \(tisch.id)")) {
+                            ForEach(tisch.artikel.filter { $0.anzahl > 0 }) { artikel in
+                                HStack {
+                                    Text(artikel.name)
+                                    Spacer()
+                                    Text("\(artikel.anzahl)x")
+                                }
                             }
+                        }
                     }
                 }
-
-                // Gesamtpreis des Tisches anzeigen
-                HStack {
-                    Text("Gesamtpreis: ")
-                        .font(.headline)
-                    Spacer()
-                    Text("\(String(format: "%.2f", berechneGesamtpreis())) €")
-                        .font(.headline)
-                        .foregroundColor(Color("MainC")) // Hauptfarbe
-                }
-                .padding()
-
-                // Anzeige der Preisänderung
-                HStack {
-                    Text("Preisänderung: ")
-                        .font(.headline)
-                    Spacer()
-                    Text("\(String(format: "%.2f", berechnePreisänderung())) €")
-                        .font(.headline)
-                        .foregroundColor(berechnePreisänderung() >= 0 ? .green : .red) // Akzentfarbe
-                }
-                .padding()
-
-                // Schließen-Button
-                Button(action: {
-                    // Aktualisiere vorherigen Preis beim Schließen
-                    vorherigerPreis = berechneGesamtpreis()
-                    zeigeSheet = false
-                }) {
-                    Text("Schließen")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color("MainC")) // Hauptfarbe
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                .padding()
             }
-            .onAppear {
-                // Initialisiere den vorherigen Preis beim Öffnen des Sheets
-                if vorherigerPreis == 0.0 {
-                    vorherigerPreis = berechneGesamtpreis()
-                }
-            }
-            .navigationTitle(kategorie.rawValue)
-            .background(Color(.systemGray6)) // Hintergrundfarbe
+            .navigationTitle("Küche")
         }
-    }
-
-    // Funktion zur Berechnung des Gesamtpreises
-    func berechneGesamtpreis() -> Double {
-        tisch.artikel.reduce(0) { sum, artikel in
-            sum + (Double(artikel.anzahl) * artikel.preis)
-        }
-    }
-
-    // Funktion zur Berechnung der Preisänderung
-    func berechnePreisänderung() -> Double {
-        berechneGesamtpreis() - vorherigerPreis
-    }
-
-    // Funktion zum Aktualisieren der Preisänderung
-    func updatePreisÄnderung() {
-        let neuerPreis = berechneGesamtpreis()
-        vorherigerPreis = vorherigerPreis == 0.0 ? neuerPreis : vorherigerPreis
     }
 }
 
-// Vorschau
+// MARK: - KellnerView
+struct KellnerView: View {
+    @Binding var bestellungen: [Tisch]
+    @Binding var tische: [Tisch]
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(bestellungen) { tisch in
+                    if tisch.artikel.contains(where: { $0.anzahl > 0 }) {
+                        NavigationLink(value: tisch.id) {
+                            VStack(alignment: .leading) {
+                                Text("Tisch \(tisch.id)")
+                                    .font(.headline)
+                                ForEach(tisch.artikel.filter { $0.anzahl > 0 }) { artikel in
+                                    Text("\(artikel.name): \(artikel.anzahl)x")
+                                        .font(.subheadline)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationDestination(for: Int.self) { tischID in
+                if let tisch = bestellungen.first(where: { $0.id == tischID }) {
+                    KategorieView(
+                        tisch: Binding(
+                            get: { tisch },
+                            set: { newValue in
+                                if let index = bestellungen.firstIndex(where: { $0.id == tischID }) {
+                                    bestellungen[index] = newValue
+                                }
+                                if let index = tische.firstIndex(where: { $0.id == tischID }) {
+                                    tische[index] = newValue
+                                }
+                            }
+                        ),
+                        bestellungen: $bestellungen,
+                        ausgewählteTischnummer: .constant(tischID)
+                    )
+                } else {
+                    Text("Tisch nicht gefunden")
+                }
+            }
+            .navigationTitle("Kellner")
+        }
+    }
+}
+
+// MARK: - Preview
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView()
+        let appState = AppState()
+        // Füge Beispieldaten hinzu
+        appState.tische = [
+            Tisch(id: 1, artikel: [
+                Artikel(name: "Cola", preis: 3.50, anzahl: 2, kategorie: .getränke),
+                Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 1, kategorie: .kuchen)
+            ])
+        ]
+        appState.bestellungen = appState.tische
+        
+        return ContentView()
+            .environmentObject(appState)
     }
 }
