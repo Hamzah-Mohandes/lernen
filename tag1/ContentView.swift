@@ -12,7 +12,9 @@ final class Item {
 
 class OrderManager: ObservableObject {
     @Published var orderedTables: [Int] = [] // Liste der bestellten Tische
-    @Published var completedOrders: [Int] = [] // Liste der abgeschlossenen Bestellungen
+    @Published var completedOrders: [String] = [] // Liste der abgeschlossenen Bestellungen
+    @Published var tablePrices: [Int: Double] = [:] // Preis für jeden Tisch
+    @Published var orders: [Int: [String: Int]] = [:] // Bestellungen für jeden Tisch mit Anzahl
 }
 
 struct ContentView: View {
@@ -56,10 +58,10 @@ struct HomeView: View {
         NavigationView {
             VStack {
                 List {
-                    ForEach(orderManager.completedOrders, id: \.self) { table in
-                        Text("Bestellung von Tisch \(table) ist fertig!")
+                    ForEach(orderManager.completedOrders, id: \.self) { order in
+                        Text("✅ \(order) ist fertig!")
                             .padding()
-                            .background(Color.green.opacity(0.3))
+                            .background(Color.red.opacity(0.3))
                             .cornerRadius(10)
                     }
                 }
@@ -89,10 +91,19 @@ struct KitchenView: View {
             } else {
                 List(orderManager.orderedTables, id: \.self) { table in
                     HStack {
-                        Text("Bestellung von Tisch \(table) erhalten!")
+                        Text("Bestellung von Tisch \(table):")
                             .padding()
                             .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
                             .cornerRadius(8)
+
+                        Spacer()
+
+                        // Zeige die Bestellungen für den Tisch an
+                        if let orders = orderManager.orders[table] {
+                            let orderDetails = orders.map { "\($0.key) (\($0.value))" }.joined(separator: ", ")
+                            Text(orderDetails)
+                                .foregroundColor(.red)
+                        }
 
                         Button(action: {
                             markOrderAsCompleted(table: table)
@@ -111,10 +122,15 @@ struct KitchenView: View {
     }
 
     private func markOrderAsCompleted(table: Int) {
-        orderManager.completedOrders.append(table)
-        if let index = orderManager.orderedTables.firstIndex(of: table) {
-            orderManager.orderedTables.remove(at: index)
+        if let orders = orderManager.orders[table] {
+            for (order, quantity) in orders {
+                for _ in 0..<quantity {
+                    orderManager.completedOrders.append(order)
+                }
+            }
         }
+        orderManager.orderedTables.removeAll { $0 == table }
+        orderManager.orders[table] = nil // Entferne die Bestellungen für den Tisch
     }
 }
 
@@ -123,16 +139,26 @@ struct WaiterView: View {
     @State private var quantities: [Int] = Array(repeating: 0, count: 80)
     @State private var selectedItem: (String, Int)?
     @State private var showingSheet = false
+    @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
 
     var body: some View {
         NavigationView {
             List(tables, id: \.self) { table in
                 NavigationLink(destination: TableDetailView(table: table, quantities: $quantities, showingSheet: $showingSheet, selectedItem: $selectedItem)) {
-                    Text("Tisch \(table)")
-                        .padding()
-                        .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
-                        .cornerRadius(10)
-                        .shadow(radius: 2)
+                    HStack {
+                        Text("Tisch \(table)")
+                            .padding()
+                            .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
+                            .cornerRadius(10)
+                            .shadow(radius: 2)
+
+                        Spacer()
+
+                        // Preisangabe neben der Tischnummer
+                        Text("\(orderManager.tablePrices[table] ?? 0.0, specifier: "%.2f") €")
+                            .foregroundColor(.red)
+                            .padding(.trailing)
+                    }
                 }
             }
             .navigationTitle("Tische")
@@ -167,6 +193,11 @@ struct TableDetailView: View {
                     .onDisappear {
                         // Füge die Tischnummer zur Liste der bestellten Tische hinzu
                         orderManager.orderedTables.append(table)
+                        // Berechne den Preis für die Bestellung und speichere ihn
+                        let totalPrice = calculateTotalPrice()
+                        orderManager.tablePrices[table] = totalPrice
+                        // Speichere die Bestellungen für den Tisch
+                        orderManager.orders[table, default: [:]][selectedItem.0, default: 0] += 1
                     }
             }
         }
@@ -186,6 +217,11 @@ struct TableDetailView: View {
             .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
             .cornerRadius(8)
         }
+    }
+
+    private func calculateTotalPrice() -> Double {
+        // Beispielpreisberechnung, hier kannst du die Logik anpassen
+        return quantities.reduce(0) { $0 + Double($1) * 1.5 } // Beispiel: 1.5 Euro pro Getränk
     }
 }
 
