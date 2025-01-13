@@ -1,119 +1,238 @@
 import SwiftUI
+import SwiftData
+
+@Model
+final class Item {
+    var timestamp: Date
+    
+    init(timestamp: Date) {
+        self.timestamp = timestamp
+    }
+}
+
+class OrderManager: ObservableObject {
+    @Published var orderedTables: [Int] = [] // Liste der bestellten Tische
+    @Published var completedOrders: [Int] = [] // Liste der abgeschlossenen Bestellungen
+}
 
 struct ContentView: View {
-    @StateObject private var viewModel = ChatViewModel()
-    
+    @StateObject var orderManager = OrderManager() // Instanz des OrderManagers
+
+    var body: some View {
+        MainTabView()
+            .environmentObject(orderManager) // Übergibt den OrderManager an die Views
+    }
+}
+
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            HomeView()
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
+                }
+                .tag(0)
+            
+            KitchenView()
+                .tabItem {
+                    Label("Küche", systemImage: "fork.knife")
+                }
+                .tag(1)
+            
+            WaiterView()
+                .tabItem {
+                    Label("Kellner", systemImage: "person.3.fill")
+                }
+                .tag(2)
+        }
+        .accentColor(.red) // Setze die Akzentfarbe auf Rot
+    }
+}
+
+struct HomeView: View {
+    @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
+
+    var body: some View {
+        NavigationView {
+            VStack {
+                List {
+                    ForEach(orderManager.completedOrders, id: \.self) { table in
+                        Text("Bestellung von Tisch \(table) ist fertig!")
+                            .padding()
+                            .background(Color.green.opacity(0.3))
+                            .cornerRadius(10)
+                    }
+                }
+                .navigationTitle("Fertige Bestellungen")
+            }
+        }
+    }
+}
+
+struct KitchenView: View {
+    @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
+
     var body: some View {
         VStack {
-            // Nachrichtenbereich
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(viewModel.messages, id: \.id) { message in
-                        HStack {
-                            if message.role == "user" {
-                                Spacer()
-                                Text(message.content)
-                                    .padding()
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                            } else {
-                                Text(message.content)
-                                    .padding()
-                                    .background(Color.gray.opacity(0.2))
-                                    .cornerRadius(10)
-                                Spacer()
-                            }
+            Text("Küchenansicht")
+                .font(.largeTitle)
+                .padding()
+                .background(Color.red.opacity(0.5)) // Rote Hintergrundfarbe mit Opazität
+                .cornerRadius(10)
+                .shadow(radius: 5)
+
+            if orderManager.orderedTables.isEmpty {
+                Text("Keine Bestellungen.")
+                    .foregroundColor(.red)
+                    .padding()
+                    .transition(.slide) // Füge eine Übergangsanimation hinzu
+            } else {
+                List(orderManager.orderedTables, id: \.self) { table in
+                    HStack {
+                        Text("Bestellung von Tisch \(table) erhalten!")
+                            .padding()
+                            .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
+                            .cornerRadius(8)
+
+                        Button(action: {
+                            markOrderAsCompleted(table: table)
+                        }) {
+                            Text("Fertig")
+                                .padding(8)
+                                .background(Color.green)
+                                .foregroundColor(.white)
+                                .cornerRadius(5)
                         }
                     }
                 }
-                .padding()
             }
-            
-            // Eingabebereich
-            HStack {
-                TextField("Type your message...", text: $viewModel.userInput)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(height: 44)
-                    .padding(.leading)
-                
-                Button(action: {
-                    viewModel.sendMessage()
-                }) {
-                    Text("Send")
+        }
+        .padding()
+    }
+
+    private func markOrderAsCompleted(table: Int) {
+        orderManager.completedOrders.append(table)
+        if let index = orderManager.orderedTables.firstIndex(of: table) {
+            orderManager.orderedTables.remove(at: index)
+        }
+    }
+}
+
+struct WaiterView: View {
+    let tables = Array(1...30)
+    @State private var quantities: [Int] = Array(repeating: 0, count: 80)
+    @State private var selectedItem: (String, Int)?
+    @State private var showingSheet = false
+
+    var body: some View {
+        NavigationView {
+            List(tables, id: \.self) { table in
+                NavigationLink(destination: TableDetailView(table: table, quantities: $quantities, showingSheet: $showingSheet, selectedItem: $selectedItem)) {
+                    Text("Tisch \(table)")
                         .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
+                        .cornerRadius(10)
+                        .shadow(radius: 2)
                 }
-                .padding(.trailing)
+            }
+            .navigationTitle("Tische")
+        }
+    }
+}
+
+struct TableDetailView: View {
+    let table: Int
+    @Binding var quantities: [Int]
+    @Binding var showingSheet: Bool
+    @Binding var selectedItem: (String, Int)?
+    @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
+
+    let drinks = (1...20).map { "Getränk \($0) - \(Double($0) * 1.5) €" }
+
+    var body: some View {
+        List {
+            Section(header: Text("Getränke")) {
+                ForEach(drinks.indices, id: \.self) { index in
+                    createButton(for: drinks[index], at: index)
+                }
+            }
+        }
+        .navigationTitle("Tisch \(table)")
+        .sheet(isPresented: Binding(
+            get: { showingSheet && selectedItem != nil },
+            set: { showingSheet = $0 }
+        )) {
+            if let selectedItem = selectedItem {
+                QuantitySelectionView(item: selectedItem.0, quantity: $quantities[selectedItem.1])
+                    .onDisappear {
+                        // Füge die Tischnummer zur Liste der bestellten Tische hinzu
+                        orderManager.orderedTables.append(table)
+                    }
+            }
+        }
+    }
+
+    private func createButton(for item: String, at index: Int) -> some View {
+        Button(action: {
+            selectedItem = (item, index)
+            showingSheet = true
+        }) {
+            HStack {
+                Text(item)
+                Spacer()
+                Text("\(quantities[index])")
+            }
+            .padding()
+            .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
+            .cornerRadius(8)
+        }
+    }
+}
+
+struct QuantitySelectionView: View {
+    let item: String
+    @Binding var quantity: Int
+    @Environment(\.dismiss) var dismiss
+
+    var body: some View {
+        VStack {
+            Text(item)
+                .font(.largeTitle)
+                .padding()
+
+            HStack {
+                Button(action: {
+                    if quantity > 0 {
+                        quantity -= 1
+                    }
+                }) {
+                    Text("-")
+                        .frame(width: 50, height: 50)
+                        .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
+                        .cornerRadius(10)
+                }
+                Text("\(quantity)")
+                    .font(.title)
+                Button(action: {
+                    quantity += 1
+                }) {
+                    Text("+")
+                        .frame(width: 50, height: 50)
+                        .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
+                        .cornerRadius(10)
+                }
+            }
+            .padding()
+
+            Button("Fertig") {
+                dismiss()
             }
             .padding()
         }
+        .padding()
     }
 }
 
-class ChatViewModel: ObservableObject {
-    @Published var messages: [ChatMessage] = [
-        ChatMessage(role: "assistant", content: "Hi! How can I assist you today?")
-    ]
-    @Published var userInput: String = ""
-    
-    private let apiKey = "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"
-    private let apiURL = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
-    
-    // Funktion zum Senden von Nachrichten und Abrufen von Antworten
-    func sendMessage() {
-        guard !userInput.isEmpty else { return }
-        
-        // Benutzer-Nachricht zur Chat-Historie hinzufügen
-        let userMessage = ChatMessage(role: "user", content: userInput)
-        messages.append(userMessage)
-        
-        // API-Anfrage vorbereiten
-        let body: [String: Any] = [
-            "inputs": [
-                ["role": "system", "content": "You are a helpful assistant."],
-                ["role": "user", "content": userInput]
-            ]
-        ]
-        
-        // Benutzer-Eingabe zurücksetzen
-        userInput = ""
-        
-        // API-Aufruf
-        Task {
-            do {
-                let response = try await queryAPI(body: body)
-                if let assistantMessage = response.first?["generated_text"] as? String {
-                    DispatchQueue.main.async {
-                        let message = ChatMessage(role: "assistant", content: assistantMessage)
-                        self.messages.append(message)
-                    }
-                }
-            } catch {
-                print("Error: \(error)")
-            }
-        }
-    }
-    
-    // API-Anfrage an Hugging Face
-    private func queryAPI(body: [String: Any]) async throws -> [[String: Any]] {
-        guard let url = URL(string: apiURL) else { throw URLError(.badURL) }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
-        
-        let (data, _) = try await URLSession.shared.data(for: request)
-        return try JSONSerialization.jsonObject(with: data) as? [[String: Any]] ?? []
-    }
-}
-
-
-struct preview: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    ContentView()
 }

@@ -39,6 +39,7 @@
 		B5C7AFB72CE4B64900983350 /* tag10.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = tag10.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5C7AFE62CE500FD00983350 /* AI-BOT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AI-BOT.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5C7AFFF2CE5F95600983350 /* TabView.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TabView.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B5D01B3F2D31495600828CCB /* start to learn2025.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "start to learn2025.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -141,6 +142,11 @@
 			path = "AI-BOT";
 			sourceTree = "<group>";
 		};
+		B5D01B402D31495600828CCB /* start to learn2025 */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "start to learn2025";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -222,6 +228,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B5D01B3C2D31495600828CCB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -238,6 +251,7 @@
 				B531B63C2CF0D40600350FC2 /* amazon */,
 				B59E16E42D03036F003FB5AE /* Bestellungen */,
 				B5374D6B2D04E6F800278333 /* llama33 */,
+				B5D01B402D31495600828CCB /* start to learn2025 */,
 				B5231F3E2CDAB38B00DF6815 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -256,6 +270,7 @@
 				B531B63B2CF0D40600350FC2 /* amazon.app */,
 				B59E16E32D03036F003FB5AE /* Bestellungen.app */,
 				B5374D6A2D04E6F800278333 /* llama33.app */,
+				B5D01B3F2D31495600828CCB /* start to learn2025.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -499,6 +514,28 @@
 			productReference = B5C7AFFF2CE5F95600983350 /* TabView.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B5D01B3E2D31495600828CCB /* start to learn2025 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5D01B4A2D31495700828CCB /* Build configuration list for PBXNativeTarget "start to learn2025" */;
+			buildPhases = (
+				B5D01B3B2D31495600828CCB /* Sources */,
+				B5D01B3C2D31495600828CCB /* Frameworks */,
+				B5D01B3D2D31495600828CCB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				B5D01B402D31495600828CCB /* start to learn2025 */,
+			);
+			name = "start to learn2025";
+			packageProductDependencies = (
+			);
+			productName = "start to learn2025";
+			productReference = B5D01B3F2D31495600828CCB /* start to learn2025.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -544,6 +581,9 @@
 					B5C7AFFE2CE5F95600983350 = {
 						CreatedOnToolsVersion = 16.1;
 					};
+					B5D01B3E2D31495600828CCB = {
+						CreatedOnToolsVersion = 16.1;
+					};
 				};
 			};
 			buildConfigurationList = B5231F382CDAB38B00DF6815 /* Build configuration list for PBXProject "lernen" */;
@@ -575,6 +615,7 @@
 				B531B63A2CF0D40600350FC2 /* amazon */,
 				B59E16E22D03036F003FB5AE /* Bestellungen */,
 				B5374D692D04E6F800278333 /* llama33 */,
+				B5D01B3E2D31495600828CCB /* start to learn2025 */,
 			);
 		};
 /* End PBXProject section */
@@ -657,6 +698,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B5D01B3D2D31495600828CCB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -731,6 +779,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		B5C7AFFB2CE5F95600983350 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B5D01B3B2D31495600828CCB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1444,6 +1499,62 @@
 			};
 			name = Release;
 		};
+		B5D01B4B2D31495700828CCB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"start to learn2025/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "edwin.start-to-learn2025";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B5D01B4C2D31495700828CCB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"start to learn2025/Preview Content\"";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "edwin.start-to-learn2025";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1551,6 +1662,15 @@
 			buildConfigurations = (
 				B5C7B00B2CE5F95800983350 /* Debug */,
 				B5C7B00C2CE5F95800983350 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B5D01B4A2D31495700828CCB /* Build configuration list for PBXNativeTarget "start to learn2025" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B5D01B4B2D31495700828CCB /* Debug */,
+				B5D01B4C2D31495700828CCB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

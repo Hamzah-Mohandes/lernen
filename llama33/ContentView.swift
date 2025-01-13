@@ -134,9 +134,6 @@
 //    }
 //}
 
-
-
-
 import SwiftUI
 
 // MARK: - Datenmodelle
@@ -144,6 +141,7 @@ import SwiftUI
 enum Kategorie: String, Identifiable, CaseIterable, Codable, Hashable {
     case getränke = "Getränke"
     case kuchen = "Kuchen"
+    case warmeFruchtstücke = "Warme Fruchtstücke"
 
     var id: String { self.rawValue }
 }
@@ -266,7 +264,8 @@ struct TischnummerEingabeView: View {
                             Artikel(name: "Bier", preis: 4.00, anzahl: 0, kategorie: .getränke),
                             Artikel(name: "Wein", preis: 5.50, anzahl: 0, kategorie: .getränke),
                             Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 0, kategorie: .kuchen),
-                            Artikel(name: "Schokokuchen", preis: 5.00, anzahl: 0, kategorie: .kuchen)
+                            Artikel(name: "Schokokuchen", preis: 5.00, anzahl: 0, kategorie: .kuchen),
+                            Artikel(name: "Reuei", preis: 6.50, anzahl: 0, kategorie: .warmeFruchtstücke)
                         ]))
                     }
                 }
@@ -292,7 +291,7 @@ struct KategorieView: View {
         List(Kategorie.allCases) { kategorie in
             NavigationLink(value: kategorie) {
                 HStack {
-                    Image(systemName: kategorie == .getränke ? "cup.and.saucer.fill" : "birthday.cake.fill")
+                    Image(systemName: kategorie == .getränke ? "cup.and.saucer.fill" : kategorie == .kuchen ? "birthday.cake.fill" : "flame.fill")
                     Text(kategorie.rawValue)
                 }
             }
@@ -329,7 +328,6 @@ struct ArtikelView: View {
 
     var body: some View {
         VStack {
-            // Liste der Artikel
             List {
                 ForEach(Array(tisch.artikel.enumerated()).filter { $0.element.kategorie == kategorie }, id: \.element.id) { index, artikel in
                     Button(action: {
@@ -348,7 +346,6 @@ struct ArtikelView: View {
                 }
             }
 
-            // Steuerelemente für den ausgewählten Artikel
             if let index = ausgewählterArtikelIndex {
                 VStack {
                     Text("Ausgewählt: \(tisch.artikel[index].name)")
@@ -402,6 +399,7 @@ struct KücheView: View {
                             ForEach(tisch.artikel.filter { $0.anzahl > 0 }) { artikel in
                                 HStack {
                                     Text(artikel.name)
+                                        .foregroundColor(artikel.name == "Reuei" ? .red : .primary)
                                     Spacer()
                                     Text("\(artikel.anzahl)x")
                                 }
@@ -430,23 +428,26 @@ struct KellnerView: View {
                                 Text("Tisch \(tisch.id)")
                                     .font(.headline)
                                 ForEach(tisch.artikel.filter { $0.anzahl > 0 }) { artikel in
-                                    Text("\(artikel.name): \(artikel.anzahl)x")
-                                        .font(.subheadline)
+                                    HStack {
+                                        Text("\(artikel.name): \(artikel.anzahl)x")
+                                            .font(.subheadline)
+                                    }
                                 }
+                                Text("Gesamtpreis: \(String(format: "%.2f €", tisch.berechneGesamtpreis()))")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
                             }
                         }
                     }
                 }
             }
             .navigationDestination(for: Int.self) { tischID in
-                if let tisch = bestellungen.first(where: { $0.id == tischID }) {
+                if let tisch = bestellungen.firstIndex(where: { $0.id == tischID }) {
                     KategorieView(
                         tisch: Binding(
-                            get: { tisch },
+                            get: { bestellungen[tisch] },
                             set: { newValue in
-                                if let index = bestellungen.firstIndex(where: { $0.id == tischID }) {
-                                    bestellungen[index] = newValue
-                                }
+                                bestellungen[tisch] = newValue
                                 if let index = tische.firstIndex(where: { $0.id == tischID }) {
                                     tische[index] = newValue
                                 }
@@ -468,11 +469,11 @@ struct KellnerView: View {
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
         let appState = AppState()
-        // Füge Beispieldaten hinzu
         appState.tische = [
             Tisch(id: 1, artikel: [
                 Artikel(name: "Cola", preis: 3.50, anzahl: 2, kategorie: .getränke),
-                Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 1, kategorie: .kuchen)
+                Artikel(name: "Apfelkuchen", preis: 4.50, anzahl: 1, kategorie: .kuchen),
+                Artikel(name: "Reuei", preis: 6.50, anzahl: 1, kategorie: .warmeFruchtstücke)
             ])
         ]
         appState.bestellungen = appState.tische

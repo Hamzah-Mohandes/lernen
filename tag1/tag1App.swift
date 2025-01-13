@@ -10,6 +10,8 @@ import SwiftData
 
 @main
 struct tag1App: App {
+    @StateObject var orderManager = OrderManager()
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -26,6 +28,7 @@ struct tag1App: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(orderManager)
         }
         .modelContainer(sharedModelContainer)
     }
