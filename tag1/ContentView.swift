@@ -1,3 +1,4 @@
+
 import SwiftUI
 import SwiftData
 
@@ -12,7 +13,7 @@ final class Item {
 
 class OrderManager: ObservableObject {
     @Published var orderedTables: [Int] = [] // Liste der bestellten Tische
-    @Published var completedOrders: [String] = [] // Liste der abgeschlossenen Bestellungen
+    @Published var completedOrders: [(table: Int, item: String)] = [] // Liste der abgeschlossenen Bestellungen mit Tischnummer
     @Published var tablePrices: [Int: Double] = [:] // Preis für jeden Tisch
     @Published var orders: [Int: [String: Int]] = [:] // Bestellungen für jeden Tisch mit Anzahl
 }
@@ -47,7 +48,7 @@ struct MainTabView: View {
                 }
                 .tag(2)
         }
-        .accentColor(.red) // Setze die Akzentfarbe auf Rot
+        .accentColor(.blue) // Setze die Akzentfarbe auf Blau
     }
 }
 
@@ -58,14 +59,17 @@ struct HomeView: View {
         NavigationView {
             VStack {
                 List {
-                    ForEach(orderManager.completedOrders, id: \.self) { order in
-                        Text("✅ \(order) ist fertig!")
-                            .padding()
-                            .background(Color.red.opacity(0.3))
-                            .cornerRadius(10)
+                    ForEach(orderManager.completedOrders, id: \.item) { order in
+                        HStack {
+                            Text("✅ Tisch \(order.table): \(order.item) ist fertig!")
+                                .padding()
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(10)
+                                .transition(.slide) // Animation für neue Einträge
+                        }
                     }
                 }
-                .navigationTitle("Fertige Bestellungen")
+                .navigationTitle("Fertige Bestellungen 🎉")
             }
         }
     }
@@ -76,45 +80,64 @@ struct KitchenView: View {
 
     var body: some View {
         VStack {
-            Text("Küchenansicht")
+            Text("Küchenansicht 🍳")
                 .font(.largeTitle)
                 .padding()
-                .background(Color.red.opacity(0.5)) // Rote Hintergrundfarbe mit Opazität
+                .background(Color.blue.opacity(0.1))
                 .cornerRadius(10)
                 .shadow(radius: 5)
 
             if orderManager.orderedTables.isEmpty {
-                Text("Keine Bestellungen.")
-                    .foregroundColor(.red)
+                Text("Keine Bestellungen. 🕸️")
+                    .foregroundColor(.gray)
                     .padding()
-                    .transition(.slide) // Füge eine Übergangsanimation hinzu
+                    .transition(.slide) // Animation für leere Liste
             } else {
                 List(orderManager.orderedTables, id: \.self) { table in
-                    HStack {
-                        Text("Bestellung von Tisch \(table):")
-                            .padding()
-                            .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
-                            .cornerRadius(8)
+                    VStack(alignment: .leading, spacing: 10) {
+                        // Tischnummer oben
+                        Text("🍽️ Tisch \(table)")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                            .padding(.vertical, 8)
 
-                        Spacer()
-
-                        // Zeige die Bestellungen für den Tisch an
+                        // Bestellungen anzeigen
                         if let orders = orderManager.orders[table] {
-                            let orderDetails = orders.map { "\($0.key) (\($0.value))" }.joined(separator: ", ")
-                            Text(orderDetails)
-                                .foregroundColor(.red)
+                            ForEach(Array(orders.keys), id: \.self) { item in
+                                HStack {
+                                    Text(item)
+                                        .font(.body)
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Text("\(orders[item] ?? 0)x")
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
                         }
 
+                        // "Fertig"-Button unten
                         Button(action: {
-                            markOrderAsCompleted(table: table)
+                            withAnimation {
+                                markOrderAsCompleted(table: table)
+                            }
                         }) {
-                            Text("Fertig")
-                                .padding(8)
+                            Text("Fertig 🎉")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .padding()
                                 .background(Color.green)
                                 .foregroundColor(.white)
-                                .cornerRadius(5)
+                                .cornerRadius(10)
                         }
+                        .padding(.top, 8)
                     }
+                    .padding()
+                    .background(Color.blue.opacity(0.05))
+                    .cornerRadius(12)
+                    .shadow(radius: 3)
                 }
             }
         }
@@ -125,43 +148,70 @@ struct KitchenView: View {
         if let orders = orderManager.orders[table] {
             for (order, quantity) in orders {
                 for _ in 0..<quantity {
-                    orderManager.completedOrders.append(order)
+                    orderManager.completedOrders.append((table: table, item: order)) // Speichere Tischnummer und Bestellung
                 }
             }
         }
         orderManager.orderedTables.removeAll { $0 == table }
-        orderManager.orders[table] = nil // Entferne die Bestellungen für den Tisch
+        orderManager.orders[table] = nil
     }
 }
 
 struct WaiterView: View {
     let tables = Array(1...30)
-    @State private var quantities: [Int] = Array(repeating: 0, count: 80)
+    @State private var quantities: [Int] = Array(repeating: 0, count: 100)
     @State private var selectedItem: (String, Int)?
     @State private var showingSheet = false
     @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
+
+    // Getränkeliste: Kalt und Warm
+    let coldDrinks = [
+        ("🥤 Cola", 2.5),
+        ("🍊 Fanta", 2.5),
+        ("💧 Wasser", 1.5),
+        ("🍎 Apfelsaft", 3.0),
+        ("🍵 Eistee", 2.8)
+    ]
+    
+    let hotDrinks = [
+        ("☕ Kaffee", 2.0),
+        ("🍵 Tee", 1.8),
+        ("☕ Cappuccino", 3.0),
+        ("☕ Latte Macchiato", 3.5),
+        ("🍫 Heiße Schokolade", 3.2)
+    ]
+
+    // Frühstücksliste
+    let breakfastItems = [
+        ("🍳 Rührei", 4.5),
+        ("🥓 Speck", 3.0),
+        ("🍞 Toast", 2.0),
+        ("🥐 Croissant", 3.5),
+        ("🥞 Pfannkuchen", 5.0),
+        ("🧀 Käseplatte", 6.0),
+        ("🍓 Obstsalat", 4.0)
+    ]
 
     var body: some View {
         NavigationView {
             List(tables, id: \.self) { table in
                 NavigationLink(destination: TableDetailView(table: table, quantities: $quantities, showingSheet: $showingSheet, selectedItem: $selectedItem)) {
                     HStack {
-                        Text("Tisch \(table)")
+                        Text("🍽️ Tisch \(table)")
                             .padding()
-                            .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
+                            .background(Color.blue.opacity(0.1))
                             .cornerRadius(10)
                             .shadow(radius: 2)
 
                         Spacer()
 
-                        // Preisangabe neben der Tischnummer
                         Text("\(orderManager.tablePrices[table] ?? 0.0, specifier: "%.2f") €")
-                            .foregroundColor(.red)
+                            .foregroundColor(.blue)
                             .padding(.trailing)
                     }
                 }
             }
-            .navigationTitle("Tische")
+            .navigationTitle("Tische 🍴")
         }
     }
 }
@@ -173,17 +223,55 @@ struct TableDetailView: View {
     @Binding var selectedItem: (String, Int)?
     @EnvironmentObject var orderManager: OrderManager // Zugriff auf den OrderManager
 
-    let drinks = (1...20).map { "Getränk \($0) - \(Double($0) * 1.5) €" }
+    // Getränkeliste: Kalt und Warm
+    let coldDrinks = [
+        ("🥤 Cola", 2.5),
+        ("🍊 Fanta", 2.5),
+        ("💧 Wasser", 1.5),
+        ("🍎 Apfelsaft", 3.0),
+        ("🍵 Eistee", 2.8)
+    ]
+    
+    let hotDrinks = [
+        ("☕ Kaffee", 2.0),
+        ("🍵 Tee", 1.8),
+        ("☕ Cappuccino", 3.0),
+        ("☕ Latte Macchiato", 3.5),
+        ("🍫 Heiße Schokolade", 3.2)
+    ]
+
+    // Frühstücksliste
+    let breakfastItems = [
+        ("🍳 Rührei", 4.5),
+        ("🥓 Speck", 3.0),
+        ("🍞 Toast", 2.0),
+        ("🥐 Croissant", 3.5),
+        ("🥞 Pfannkuchen", 5.0),
+        ("🧀 Käseplatte", 6.0),
+        ("🍓 Obstsalat", 4.0)
+    ]
 
     var body: some View {
         List {
-            Section(header: Text("Getränke")) {
-                ForEach(drinks.indices, id: \.self) { index in
-                    createButton(for: drinks[index], at: index)
+            Section(header: Text("Kalte Getränke 🧊").font(.headline)) {
+                ForEach(coldDrinks.indices, id: \.self) { index in
+                    createButton(for: coldDrinks[index].0, price: coldDrinks[index].1, at: index)
+                }
+            }
+            
+            Section(header: Text("Warme Getränke ☕").font(.headline)) {
+                ForEach(hotDrinks.indices, id: \.self) { index in
+                    createButton(for: hotDrinks[index].0, price: hotDrinks[index].1, at: index + coldDrinks.count)
+                }
+            }
+            
+            Section(header: Text("Frühstück 🍳").font(.headline)) {
+                ForEach(breakfastItems.indices, id: \.self) { index in
+                    createButton(for: breakfastItems[index].0, price: breakfastItems[index].1, at: index + coldDrinks.count + hotDrinks.count)
                 }
             }
         }
-        .navigationTitle("Tisch \(table)")
+        .navigationTitle("Tisch \(table) 🍽️")
         .sheet(isPresented: Binding(
             get: { showingSheet && selectedItem != nil },
             set: { showingSheet = $0 }
@@ -191,19 +279,20 @@ struct TableDetailView: View {
             if let selectedItem = selectedItem {
                 QuantitySelectionView(item: selectedItem.0, quantity: $quantities[selectedItem.1])
                     .onDisappear {
-                        // Füge die Tischnummer zur Liste der bestellten Tische hinzu
-                        orderManager.orderedTables.append(table)
-                        // Berechne den Preis für die Bestellung und speichere ihn
-                        let totalPrice = calculateTotalPrice()
-                        orderManager.tablePrices[table] = totalPrice
-                        // Speichere die Bestellungen für den Tisch
-                        orderManager.orders[table, default: [:]][selectedItem.0, default: 0] += 1
+                        withAnimation {
+                            if !orderManager.orderedTables.contains(table) {
+                                orderManager.orderedTables.append(table)
+                            }
+                            let totalPrice = calculateTotalPrice()
+                            orderManager.tablePrices[table] = totalPrice
+                            orderManager.orders[table, default: [:]][selectedItem.0, default: 0] += quantities[selectedItem.1]
+                        }
                     }
             }
         }
     }
 
-    private func createButton(for item: String, at index: Int) -> some View {
+    private func createButton(for item: String, price: Double, at index: Int) -> some View {
         Button(action: {
             selectedItem = (item, index)
             showingSheet = true
@@ -212,16 +301,17 @@ struct TableDetailView: View {
                 Text(item)
                 Spacer()
                 Text("\(quantities[index])")
+                Text("\(price, specifier: "%.2f") €")
+                    .foregroundColor(.gray)
             }
             .padding()
-            .background(Color.red.opacity(0.1)) // Rote Hintergrundfarbe mit Opazität
+            .background(Color.blue.opacity(0.1))
             .cornerRadius(8)
         }
     }
 
     private func calculateTotalPrice() -> Double {
-        // Beispielpreisberechnung, hier kannst du die Logik anpassen
-        return quantities.reduce(0) { $0 + Double($1) * 1.5 } // Beispiel: 1.5 Euro pro Getränk
+        return quantities.reduce(0) { $0 + Double($1) * 1.5 }
     }
 }
 
@@ -238,32 +328,39 @@ struct QuantitySelectionView: View {
 
             HStack {
                 Button(action: {
-                    if quantity > 0 {
-                        quantity -= 1
+                    withAnimation {
+                        if quantity > 0 {
+                            quantity -= 1
+                        }
                     }
                 }) {
                     Text("-")
                         .frame(width: 50, height: 50)
-                        .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
+                        .background(Color.blue.opacity(0.2))
                         .cornerRadius(10)
                 }
                 Text("\(quantity)")
                     .font(.title)
                 Button(action: {
-                    quantity += 1
+                    withAnimation {
+                        quantity += 1
+                    }
                 }) {
                     Text("+")
                         .frame(width: 50, height: 50)
-                        .background(Color.red.opacity(0.2)) // Rote Hintergrundfarbe mit Opazität
+                        .background(Color.blue.opacity(0.2))
                         .cornerRadius(10)
                 }
             }
             .padding()
 
-            Button("Fertig") {
+            Button("Fertig 🎉") {
                 dismiss()
             }
             .padding()
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
         }
         .padding()
     }
@@ -272,3 +369,4 @@ struct QuantitySelectionView: View {
 #Preview {
     ContentView()
 }
+
