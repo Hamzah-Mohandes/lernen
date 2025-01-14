@@ -1,107 +1,115 @@
 import SwiftUI
-import Combine
 
-// AuthModel
-struct AuthModel {
-    var username: String
-    var password: String
-
-    func validateCredentials() -> Bool {
-        return username == "12345" && password == "12345"
-    }
+// 1. Struktur für unsere Einkaufsitems
+struct EinkaufsItem: Identifiable {
+    let id = UUID()
+    var name: String
+    var menge: Int
+    var erledigt: Bool
 }
 
-// AuthViewModel
-class AuthViewModel: ObservableObject {
-    @Published var username: String = ""
-    @Published var password: String = ""
-    @Published var loginError: String = ""
-    @Published var isLoggedIn: Bool = false
-
-    private var authModel: AuthModel {
-        return AuthModel(username: username, password: password)
-    }
-
-    func login() {
-        if authModel.validateCredentials() {
-            isLoggedIn = true
-            loginError = ""
-        } else {
-            loginError = "Invalid username or password"
-        }
-    }
-}
-
-// AuthView
-struct AuthView: View {
-    @ObservedObject var viewModel: AuthViewModel
-
-    var body: some View {
-        VStack {
-            TextField("Username", text: $viewModel.username)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-
-            SecureField("Password", text: $viewModel.password)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding()
-
-            Button(action: {
-                viewModel.login()
-            }) {
-                Text("Login")
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
-
-            if !viewModel.loginError.isEmpty {
-                Text(viewModel.loginError)
-                    .foregroundColor(.red)
-                    .padding()
-            }
-        }
-        .padding()
-    }
-}
-
-// HomeView
-struct HomeView: View {
-    var body: some View {
-        Text("Home View")
-            .font(.largeTitle)
-            .padding()
-    }
-}
-
-// ContentView
 struct ContentView: View {
-    @StateObject private var viewModel = AuthViewModel()
-
+    // 2. State Variablen
+    @State private var einkaufsliste: [EinkaufsItem] = [
+        EinkaufsItem(name: "Äpfel", menge: 5, erledigt: false),
+        EinkaufsItem(name: "Brot", menge: 1, erledigt: false),
+        EinkaufsItem(name: "Milch", menge: 2, erledigt: false)
+    ]
+    
+    @State private var neuesItem: String = ""
+    @State private var neueMenge: String = ""
+    
     var body: some View {
-        if viewModel.isLoggedIn {
-            TabView {
-                HomeView()
-                    .tabItem {
-                        Image(systemName: "house")
-                        Text("Home")
+        NavigationStack {
+            VStack {
+                // 3. Eingabebereich
+                HStack {
+                    TextField("Neues Item", text: $neuesItem)
+                        .textFieldStyle(.roundedBorder)
+                    
+                    TextField("Menge", text: $neueMenge)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 60)
+                        .keyboardType(.numberPad)
+                    
+                    Button(action: hinzufügenItem) {
+                        Image(systemName: "plus.circle.fill")
+                            .foregroundStyle(.green)
+                            .font(.title2)
                     }
-                AuthView(viewModel: viewModel)
-                    .tabItem {
-                        Image(systemName: "person")
-                        Text("Login")
+                }
+                .padding()
+                
+                // 4. Liste der Items
+                List {
+                    ForEach(einkaufsliste) { item in
+                        HStack {
+                            // Checkbox
+                            Image(systemName: item.erledigt ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(item.erledigt ? .green : .gray)
+                                .onTapGesture {
+                                    toggleErledigt(item)
+                                }
+                            
+                            // Item Details
+                            VStack(alignment: .leading) {
+                                Text(item.name)
+                                    .strikethrough(item.erledigt)
+                                Text("\(item.menge) Stück")
+                                    .font(.caption)
+                                    .foregroundStyle(.gray)
+                            }
+                            
+                            Spacer()
+                        }
                     }
+                    // 5. Löschfunktion
+                    .onDelete(perform: löscheItems)
+                }
             }
-        } else {
-            AuthView(viewModel: viewModel)
+            .navigationTitle("Einkaufsliste")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: alleItemsLöschen) {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
         }
     }
-}
-
-// Preview
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
+    
+    // 6. Funktionen für Array-Operationen
+    func hinzufügenItem() {
+        guard !neuesItem.isEmpty,
+              let anzahl = Int(neueMenge),
+              anzahl > 0 else { return }
+        
+        let item = EinkaufsItem(name: neuesItem, menge: anzahl, erledigt: false)
+        einkaufsliste.append(item)
+        
+        // Eingabefelder zurücksetzen
+        neuesItem = ""
+        neueMenge = ""
+    }
+    
+    func toggleErledigt(_ item: EinkaufsItem) {
+        if let index = einkaufsliste.firstIndex(where: { $0.id == item.id }) {
+            einkaufsliste[index].erledigt.toggle()
+        }
+    }
+    
+    func löscheItems(at offsets: IndexSet) {
+        einkaufsliste.remove(atOffsets: offsets)
+    }
+    
+    func alleItemsLöschen() {
+        einkaufsliste.removeAll()
     }
 }
+
+#Preview {
+    ContentView()
+}
+
+//warum Array sind wichtig ? weill viel kleine App und Grösse app schreiben wir mit Array oder Collection :) wie das -> 

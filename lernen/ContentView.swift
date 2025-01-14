@@ -8,8 +8,6 @@
 
 import SwiftUI
 import SwiftData
-import Foundation
-
 
 @Model
 class Task {
@@ -36,54 +34,77 @@ class Comment {
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var tasks: [Task]
-
     @State private var newTaskTitle = ""
+    @State private var selectedTab = 0
 
     var body: some View {
-        NavigationView {
-            VStack {
-                HStack {
-                    TextField("New Task", text: $newTaskTitle)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding()
-
-                    Button(action: {
-                        if !newTaskTitle.isEmpty {
-                            let task = Task(title: newTaskTitle)
-                            modelContext.insert(task)
-                            newTaskTitle = ""
+        TabView(selection: $selectedTab) {
+            // Tasks Tab
+            NavigationView {
+                VStack {
+                    HStack {
+                        TextField("Neue Aufgabe", text: $newTaskTitle)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                            .padding()
+                        
+                        Button(action: {
+                            if !newTaskTitle.isEmpty {
+                                let task = Task(title: newTaskTitle)
+                                modelContext.insert(task)
+                                newTaskTitle = ""
+                            }
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundColor(.blue)
                         }
-                    }) {
-                        Text("Add Task")
+                        .padding(.trailing)
                     }
-                    .disabled(newTaskTitle.isEmpty)
+                    
+                    List {
+                        ForEach(tasks) { task in
+                            NavigationLink(destination: TaskDetailView(task: task)) {
+                                HStack {
+                                    Text(task.title)
+                                    Spacer()
+                                    if task.isFavorite {
+                                        Image(systemName: "heart.fill")
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                            }
+                        }
+                        .onDelete(perform: deleteTasks)
+                    }
                 }
-
+                .navigationTitle("Aufgaben")
+            }
+            .tabItem {
+                Label("Aufgaben", systemImage: "list.bullet")
+            }
+            .tag(0)
+            
+            // Favoriten Tab
+            NavigationView {
                 List {
-                    ForEach(tasks) { task in
+                    ForEach(tasks.filter { $0.isFavorite }) { task in
                         NavigationLink(destination: TaskDetailView(task: task)) {
                             Text(task.title)
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                modelContext.delete(task)
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                            Button(action: {
-                                task.isFavorite.toggle()
-                                // Änderungen werden automatisch gespeichert
-                            }) {
-                                Image(systemName: task.isFavorite ? "heart.fill" : "heart")
-                                    .foregroundColor(task.isFavorite ? .red : .gray)
-                            }
-                        }
                     }
                 }
+                .navigationTitle("Favoriten")
             }
-            .navigationTitle("To-Do List")
+            .tabItem {
+                Label("Favoriten", systemImage: "heart.fill")
+            }
+            .badge(tasks.filter { $0.isFavorite }.count)
+            .tag(1)
+        }
+    }
+    
+    private func deleteTasks(offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(tasks[index])
         }
     }
 }
