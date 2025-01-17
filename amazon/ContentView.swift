@@ -1,215 +1,145 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - 1. Datenmodell
-@Model // Markiert die Klasse als SwiftData-Modell
-class Notiz {
-    var titel: String      // Titel der Notiz
-    var text: String       // Text der Notiz
-    var erstelltAm: Date   // Erstellungsdatum
-    var istWichtig: Bool   // Wichtigkeitsstatus
+// MARK: - Datenmodell
+@Model
+class Aufgabe {
+    var titel: String
+    var beschreibung: String
+    var istErledigt: Bool
+    var priorität: Priorität
+    var erstelltAm: Date
     
-    init(titel: String = "", text: String = "", istWichtig: Bool = false) {
+    enum Priorität: Int, Codable {
+        case niedrig, mittel, hoch
+        
+        var symbol: String {
+            switch self {
+            case .niedrig: "⭐️"
+            case .mittel: "⭐️⭐️"
+            case .hoch: "⭐️⭐️⭐️"
+            }
+        }
+    }
+    
+    init(titel: String = "", beschreibung: String = "", priorität: Priorität = .mittel) {
         self.titel = titel
-        self.text = text
+        self.beschreibung = beschreibung
+        self.istErledigt = false
+        self.priorität = priorität
         self.erstelltAm = Date()
-        self.istWichtig = istWichtig
     }
 }
 
-// MARK: - 2. Hauptansicht
+// MARK: - ContentView
 struct ContentView: View {
-    // Zugriff auf gespeicherte Notizen
-    @Query(sort: \Notiz.erstelltAm, order: .reverse) private var notizen: [Notiz]
+    @Query(sort: \Aufgabe.erstelltAm, order: .reverse) private var aufgaben: [Aufgabe]
     @Environment(\.modelContext) private var modelContext
     
-    @State private var showingNeueNotiz = false
-    @State private var suchText = ""
-    @State private var showingDebugInfo = false
+    @State private var showingNeueAufgabe = false
+    @State private var neuerTitel = ""
+    @State private var neueBeschreibung = ""
+    @State private var neuePriorität = Aufgabe.Priorität.mittel
     
     var body: some View {
         NavigationStack {
             List {
-                // Debug-Sektion
-                if showingDebugInfo {
-                    Section("Debug Information") {
-                        Text("Anzahl Notizen: \(notizen.count)")
-                        Text("Wichtige Notizen: \(notizen.filter { $0.istWichtig }.count)")
+                ForEach(aufgaben) { aufgabe in
+                    HStack {
+                        // Checkbox
+                        Image(systemName: aufgabe.istErledigt ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(aufgabe.istErledigt ? .green : .gray)
+                            .onTapGesture {
+                                aufgabe.istErledigt.toggle()
+                            }
                         
-                        // Zeige Speicherort
-                        Text("Datenbank Pfad:")
-                            .font(.caption)
-                        Text(URL.applicationSupportDirectory.path())
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                
-                // Normale Notizenliste
-                ForEach(notizen) { notiz in
-                    NavigationLink(destination: NotizDetailView(notiz: notiz)) {
-                        NotizZeile(notiz: notiz)
-                    }
-                }
-                .onDelete(perform: notizLöschen)
-            }
-            .navigationTitle("Meine Notizen")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { showingNeueNotiz.toggle() }) {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(.blue)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { 
-                        showingDebugInfo.toggle()
-                        if showingDebugInfo {
-                            druckeDatenbankInfo()
-                            exportiereDaten()
+                        VStack(alignment: .leading) {
+                            Text(aufgabe.titel)
+                                .font(.headline)
+                                .strikethrough(aufgabe.istErledigt)
+                            
+                            if !aufgabe.beschreibung.isEmpty {
+                                Text(aufgabe.beschreibung)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                    }) {
-                        Image(systemName: "info.circle")
-                            .foregroundStyle(showingDebugInfo ? .blue : .gray)
+                        
+                        Spacer()
+                        
+                        Text(aufgabe.priorität.symbol)
                     }
                 }
+                .onDelete(perform: löscheAufgaben)
             }
-            .sheet(isPresented: $showingNeueNotiz) {
-                NeueNotizView()
-            }
-        }
-        .onAppear {
-            druckeDatenbankInfo()
-        }
-        .preferredColorScheme(.dark)
-    }
-    
-    private func notizLöschen(offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(notizen[index])
-        }
-    }
-    
-    // Debug-Funktionen
-    private func druckeDatenbankInfo() {
-        print("📊 Datenbank Status:")
-        print("📁 Pfad:", URL.applicationSupportDirectory.path())
-        print("📝 Anzahl Notizen:", notizen.count)
-        
-        for (index, notiz) in notizen.enumerated() {
-            print("\(index + 1). \(notiz.titel) (\(notiz.erstelltAm.formatted()))")
-        }
-    }
-    
-    private func exportiereDaten() {
-        let exportText = notizen.map { notiz in
-            """
-            Titel: \(notiz.titel)
-            Text: \(notiz.text)
-            Erstellt: \(notiz.erstelltAm.formatted())
-            Wichtig: \(notiz.istWichtig ? "Ja" : "Nein")
-            ----------------
-            """
-        }.joined(separator: "\n")
-        
-        print("📝 Exportierte Daten:\n\(exportText)")
-    }
-}
-
-// MARK: - 3. Neue Notiz View
-struct NeueNotizView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    
-    @State private var titel = ""
-    @State private var text = ""
-    @State private var istWichtig = false
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section("Notiz Details") {
-                    TextField("Titel", text: $titel)
-                    TextField("Text", text: $text, axis: .vertical)
-                        .lineLimit(5...10)
-                    Toggle("Wichtig", isOn: $istWichtig)
-                }
-            }
-            .navigationTitle("Neue Notiz")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Meine Aufgaben")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Abbrechen") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Speichern") {
-                        speichereNotiz()
-                    }
-                    .disabled(titel.isEmpty)
+                Button(action: { showingNeueAufgabe.toggle() }) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(.blue)
                 }
             }
-        }
-    }
-    
-    private func speichereNotiz() {
-        let neueNotiz = Notiz(titel: titel, text: text, istWichtig: istWichtig)
-        modelContext.insert(neueNotiz)
-        dismiss()
-    }
-}
-
-// MARK: - 4. Notiz Detail View
-struct NotizDetailView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Bindable var notiz: Notiz
-    
-    var body: some View {
-        Form {
-            Section {
-                TextField("Titel", text: $notiz.titel)
-                TextField("Text", text: $notiz.text, axis: .vertical)
-                    .lineLimit(5...10)
-                Toggle("Wichtig", isOn: $notiz.istWichtig)
-            }
-            
-            Section {
-                Text("Erstellt am: \(notiz.erstelltAm.formatted())")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .navigationTitle("Notiz bearbeiten")
-    }
-}
-
-// MARK: - 5. Hilfsviews
-struct NotizZeile: View {
-    let notiz: Notiz
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(notiz.titel)
-                    .font(.headline)
-                Text(notiz.text)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            
-            Spacer()
-            
-            if notiz.istWichtig {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(.yellow)
+            .sheet(isPresented: $showingNeueAufgabe) {
+                NavigationStack {
+                    Form {
+                        TextField("Titel", text: $neuerTitel)
+                        TextField("Beschreibung", text: $neueBeschreibung, axis: .vertical)
+                            .lineLimit(3...6)
+                        
+                        Picker("Priorität", selection: $neuePriorität) {
+                            Text("Niedrig").tag(Aufgabe.Priorität.niedrig)
+                            Text("Mittel").tag(Aufgabe.Priorität.mittel)
+                            Text("Hoch").tag(Aufgabe.Priorität.hoch)
+                        }
+                    }
+                    .navigationTitle("Neue Aufgabe")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Abbrechen") {
+                                showingNeueAufgabe = false
+                                resetForm()
+                            }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Speichern") {
+                                speichereAufgabe()
+                            }
+                            .disabled(neuerTitel.isEmpty)
+                        }
+                    }
+                }
             }
         }
     }
+    
+    // MARK: - Hilfsfunktionen
+    private func speichereAufgabe() {
+        let aufgabe = Aufgabe(
+            titel: neuerTitel,
+            beschreibung: neueBeschreibung,
+            priorität: neuePriorität
+        )
+        modelContext.insert(aufgabe)
+        showingNeueAufgabe = false
+        resetForm()
+    }
+    
+    private func löscheAufgaben(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(aufgaben[index])
+        }
+    }
+    
+    private func resetForm() {
+        neuerTitel = ""
+        neueBeschreibung = ""
+        neuePriorität = .mittel
+    }
 }
 
-// MARK: - 6. Preview
+// MARK: - Preview
 #Preview {
     ContentView()
-        .modelContainer(for: Notiz.self, inMemory: true)
+        .modelContainer(for: Aufgabe.self, inMemory: true)
 }
