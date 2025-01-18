@@ -1,31 +1,42 @@
 import SwiftUI
 
-enum Tab {
-    case home
-    case profile
-}
+
 
 struct ContentView: View {
     @StateObject private var viewModel = AuthViewModel() // Verwende das ViewModel für die Authentifizierung
     @StateObject private var userManager = UserManager() // BenutzerManager als StateObject
     @State private var showRegisterView: Bool = false // Zustand für die Anzeige der Registrierungsansicht
-    @State private var selectedTab: Tab = .home // Aktuell ausgewählte Tab
+    @State private var selectedTab = 0 // Aktuell ausgewählte Tab
 
     var body: some View {
         if viewModel.isLoggedIn {
-        TabView(selection: $selectedTab) {
-            HomeView()
-                .tabItem {
-                    Label("Home", systemImage: "house")
+            TabView(selection: $selectedTab) {
+                // Home Tab
+                Tab("Home", systemImage: "house", value: 1) {
+                    NavigationView {
+                        HomeView()
+                            .navigationTitle("Home") // Titel für die Navigation
+                    }
                 }
-                .tag(Tab.home)
 
-            ProfileView()
-                .tabItem {
-                    Label("Profil", systemImage: "person")
+                // Profil Tab
+                Tab("Profil", systemImage: "person", value: 2) {
+                    NavigationView {
+                        ProfileView()
+                            .navigationTitle("Profil") // Titel für die Navigation
+                    }
                 }
-                .tag(Tab.profile)
-        }
+
+                // Einstellungen Tab
+                Tab("Einstellungen", systemImage: "gear", value: 3) {
+                    NavigationView {
+                        SettingsView()
+                            .navigationTitle("Einstellungen") // Titel für die Navigation
+                    }
+                }
+            }
+            
+            
         } else {
             // Login-Ansicht, wenn der Benutzer nicht eingeloggt ist
             VStack {
