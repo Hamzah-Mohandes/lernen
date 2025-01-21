@@ -75,6 +75,7 @@ class TodoViewModel: ObservableObject {
 }
 
 // MARK: - Views
+
 struct InputSectionView: View {
     @ObservedObject var viewModel: TodoViewModel
     @State private var isButtonTapped = false
@@ -106,6 +107,7 @@ struct InputSectionView: View {
                 withAnimation {
                     isButtonTapped = true
                 }
+                // Adds a delay before returning the button (cancel) animation.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     withAnimation {
                         isButtonTapped = false
@@ -151,6 +153,7 @@ struct TodoListView: View {
                 indexSet.map { filteredTodos[$0] }.forEach(viewModel.deleteTodo)
             })
         }
+        .animation(.easeInOut, value: filteredTodos)  // Animate list appearance/changes
     }
 }
 
@@ -182,6 +185,7 @@ struct TodoRowView: View {
             Text(todo.priority.rawValue.capitalized)
                 .foregroundColor(todo.priority == .high ? .red : .blue)
         }
+        .transition(.opacity)   // Apply transition on favorite toggle
     }
 }
 
@@ -206,16 +210,29 @@ struct HomeView: View {
                                     .background(viewModel.selectedCategory == category ? Color.blue : Color.gray)
                                     .foregroundColor(.white)
                                     .cornerRadius(10)
+                                    .scaleEffect(viewModel.selectedCategory == category ? 1.2 : 1.0)
+                                    // Animate scale effect for category selection
+                                    .animation(.easeInOut(duration: 0.3), value: viewModel.selectedCategory)
                             }
                         }
                     }
                     .padding(.horizontal)
                 }
+                .id(viewModel.categories)  // Ensures layout knows about changes
+                .animation(.easeInOut, value: viewModel.selectedCategory) // Animates HStack layout changes
 
                 InputSectionView(viewModel: viewModel)
+
                 TodoListView(viewModel: viewModel)
+                    .listStyle(.plain)  // For full flexibility with animations
             }
+            .animation(.easeInOut(duration: 0.3), value: viewModel.selectedCategory)
             .navigationTitle("Todos")
+        }
+        .onAppear { // Example: Add an overall entry animation
+            withAnimation(.easeInOut(duration: 1.0)) {
+                self.viewModel.selectedCategory = self.viewModel.categories.first!
+            }
         }
     }
 }
