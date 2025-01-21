@@ -242,15 +242,42 @@ struct FavoritesView: View {
     @Query private var favoriteTodos: [Todo]
 
     init() {
-        _favoriteTodos = Query(filter: #Predicate { $0.isFavorite })
+        // Verwenden Sie das #Predicate-Makro von SwiftData
+        _favoriteTodos = Query(filter: #Predicate<Todo> { todo in
+            todo.isFavorite == true
+        })
     }
 
     var body: some View {
         NavigationView {
-            List(favoriteTodos) { todo in
-                Text(todo.title)
+            VStack {
+                if favoriteTodos.isEmpty {
+                    Text("No Favorite Todos")
+                        .font(.headline)
+                        .padding()
+                        .foregroundColor(.gray)
+                } else {
+                    List {
+                        ForEach(favoriteTodos) { todo in
+                            TodoRowView(todo: todo)
+                                .transition(.opacity)
+                                .animation(.spring(), value: todo.isFavorite)
+                        }
+                        .onDelete(perform: deleteFavoriteTodos)
+                    }
+                }
             }
             .navigationTitle("Favorites")
+            .navigationBarTitleDisplayMode(.large)
+        }
+    }
+
+    private func deleteFavoriteTodos(at offsets: IndexSet) {
+        offsets.map { favoriteTodos[$0] }.forEach(modelContext.delete)
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error deleting favorite todos: \(error)")
         }
     }
 }
