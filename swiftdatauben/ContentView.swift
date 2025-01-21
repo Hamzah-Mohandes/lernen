@@ -3,12 +3,13 @@ import SwiftData
 
 // MARK: - Models
 @Model
-class Todo: Identifiable, Codable { // final entfernt
+class Todo: Identifiable {
     var id: UUID
     var title: String
     var dateCreated: Date
     var priority: Priority
     var category: String
+    var isFavorite: Bool = false
 
     enum Priority: String, CaseIterable, Codable, Hashable {
         case low
@@ -49,17 +50,14 @@ class TodoViewModel: ObservableObject {
             category: selectedNewCategory
         )
         modelContext.insert(todo)
-        printTodosInDatabase()
 
         do {
             try modelContext.save()
             print("Todo added successfully: \(todo.title)")
-            printTodosInDatabase()
         } catch {
             print("Error saving todo: \(error)")
         }
 
-        // Reset input fields
         newTodoTitle = ""
         selectedPriority = .normal
         selectedNewCategory = "Work"
@@ -70,18 +68,8 @@ class TodoViewModel: ObservableObject {
         do {
             try modelContext.save()
             print("Todo deleted successfully")
-            printTodosInDatabase()
         } catch {
             print("Error deleting todo: \(error)")
-        }
-    }
-
-    private func printTodosInDatabase() {
-        do {
-            let todos = try modelContext.fetch(FetchDescriptor<Todo>())
-            print("Todos in database: \(todos.first?.title ?? "No todos found")")
-        } catch {
-            print("Error fetching todos: \(error)")
         }
     }
 }
@@ -167,7 +155,8 @@ struct TodoListView: View {
 }
 
 struct TodoRowView: View {
-    let todo: Todo
+    var todo: Todo
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         HStack {
@@ -179,6 +168,17 @@ struct TodoRowView: View {
                     .foregroundColor(.gray)
             }
             Spacer()
+            Button(action: {
+                todo.isFavorite.toggle()
+                do {
+                    try modelContext.save()
+                } catch {
+                    print("Error saving favorite status: \(error)")
+                }
+            }) {
+                Image(systemName: todo.isFavorite ? "heart.fill" : "heart")
+                    .foregroundColor(.red)
+            }
             Text(todo.priority.rawValue.capitalized)
                 .foregroundColor(todo.priority == .high ? .red : .blue)
         }
@@ -220,32 +220,20 @@ struct HomeView: View {
     }
 }
 
-// MARK: - SecondView
-struct SecondView: View {
-    var body: some View {
-        VStack {
-            Text("Favorites")
-                .font(.largeTitle)
-                .padding()
-            Image(systemName: "heart")
-                .resizable()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.pink)
-        }
-    }
-}
+struct FavoritesView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Query private var favoriteTodos: [Todo]
 
-// MARK: - ThirdView
-struct ThirdView: View {
+    init() {
+        _favoriteTodos = Query(filter: #Predicate { $0.isFavorite })
+    }
+
     var body: some View {
-        VStack {
-            Text("Settings")
-                .font(.largeTitle)
-                .padding()
-            Image(systemName: "gear")
-                .resizable()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.gray)
+        NavigationView {
+            List(favoriteTodos) { todo in
+                Text(todo.title)
+            }
+            .navigationTitle("Favorites")
         }
     }
 }
@@ -260,12 +248,12 @@ struct ContentView: View {
                     Label("Home", systemImage: "house")
                 }
 
-            SecondView()
+            FavoritesView()
                 .tabItem {
                     Label("Favorites", systemImage: "heart")
                 }
 
-            ThirdView()
+            Text("Settings")
                 .tabItem {
                     Label("Settings", systemImage: "gearshape")
                 }
