@@ -76,52 +76,149 @@ class TodoViewModel: ObservableObject {
 
 // MARK: - Views
 
-struct InputSectionView: View {
-    @ObservedObject var viewModel: TodoViewModel
-    @State private var isButtonTapped = false
+struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
-        VStack(spacing: 10) {
-            TextField("New Todo", text: $viewModel.newTodoTitle)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .padding(.horizontal)
-
-            Picker("Priority", selection: $viewModel.selectedPriority) {
-                ForEach(Todo.Priority.allCases, id: \.self) { priority in
-                    Text(priority.rawValue.capitalized).tag(priority)
+        TabView {
+            HomeView(modelContext: modelContext)
+                .tabItem {
+                    Label("Home", systemImage: "house")
                 }
+
+            FavoritesView()
+                .tabItem {
+                    Label("Favorites", systemImage: "heart")
+                }
+
+            Text("Settings")
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+        }
+    }
+}
+
+struct HomeView: View {
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var viewModel: TodoViewModel
+    @State private var showAddTodoSheet = false
+
+    init(modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: TodoViewModel(modelContext: modelContext))
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Header
+                VStack {
+                    Text("Todos")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(Color(hex: "#333333"))
+                        .padding(.top, 20)
+                    
+                    TextField("Search", text: .constant(""))
+                        .padding(10)
+                        .background(Color(hex: "#F5F5F5"))
+                        .cornerRadius(10)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 10)
+                }
+                .background(Color.white)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
+
+                // Categories
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(viewModel.categories, id: \.self) { category in
+                            CategoryButton(category: category, isSelected: viewModel.selectedCategory == category) {
+                                viewModel.selectedCategory = category
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                }
+
+                // Todo List
+                TodoListView(viewModel: viewModel)
+                    .padding(.horizontal, 20)
+
+                Spacer()
+
+                // Floating Action Button
+                FloatingActionButton {
+                    showAddTodoSheet = true
+                }
+                .padding(.bottom, 20)
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
-
-            Picker("Category", selection: $viewModel.selectedNewCategory) {
-                ForEach(["Work", "Personal", "Shopping"], id: \.self) { category in
-                    Text(category).tag(category)
-                }
+            .background(Color(hex: "#F5F5F5"))
+            .navigationBarHidden(true)
+            .sheet(isPresented: $showAddTodoSheet) {
+                AddTodoView(viewModel: viewModel, isPresented: $showAddTodoSheet)
             }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal)
+        }
+    }
+}
 
-            Button(action: {
-                viewModel.addTodo()
-                withAnimation {
-                    isButtonTapped = true
-                }
-                // Adds a delay before returning the button (cancel) animation.
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    withAnimation {
-                        isButtonTapped = false
+struct AddTodoView: View {
+    @ObservedObject var viewModel: TodoViewModel
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("New Todo")) {
+                    TextField("Title", text: $viewModel.newTodoTitle)
+                    Picker("Priority", selection: $viewModel.selectedPriority) {
+                        ForEach(Todo.Priority.allCases, id: \.self) { priority in
+                            Text(priority.rawValue.capitalized).tag(priority)
+                        }
+                    }
+                    Picker("Category", selection: $viewModel.selectedNewCategory) {
+                        ForEach(viewModel.categories.filter { $0 != "All" }, id: \.self) { category in
+                            Text(category).tag(category)
+                        }
                     }
                 }
-            }) {
-                Text("Add Todo")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isButtonTapped ? Color.green : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
             }
-            .padding(.horizontal)
+            .navigationTitle("Add Todo")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        isPresented = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        viewModel.addTodo()
+                        isPresented = false
+                    }
+                    .disabled(viewModel.newTodoTitle.isEmpty)
+                }
+            }
+        }
+    }
+}
+
+struct CategoryButton: View {
+    let category: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(category)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(isSelected ? .white : Color(hex: "#333333"))
+                .padding(.horizontal, 20)
+                .padding(.vertical, 10)
+                .background(isSelected ? Color(hex: "#4A90E2") : Color.white)
+                .cornerRadius(20)
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
+                .scaleEffect(isSelected ? 1.1 : 1.0)
+                .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0), value: isSelected)
         }
     }
 }
@@ -138,37 +235,32 @@ struct TodoListView: View {
     }
 
     var body: some View {
-        List {
-            ForEach(filteredTodos) { todo in
-                TodoRowView(todo: todo)
-                    .swipeActions {
-                        Button(role: .destructive) {
-                            viewModel.deleteTodo(todo)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(filteredTodos) { todo in
+                    TodoCardView(todo: todo, viewModel: viewModel)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                        .animation(.easeInOut(duration: 0.3), value: filteredTodos)
+                }
             }
-            .onDelete(perform: { indexSet in
-                indexSet.map { filteredTodos[$0] }.forEach(viewModel.deleteTodo)
-            })
         }
-        .animation(.easeInOut, value: filteredTodos)  // Animate list appearance/changes
     }
 }
 
-struct TodoRowView: View {
+struct TodoCardView: View {
     var todo: Todo
+    @ObservedObject var viewModel: TodoViewModel
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         HStack {
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(todo.title)
-                    .font(.headline)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Color(hex: "#333333"))
                 Text(todo.category)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(Color(hex: "#777777"))
             }
             Spacer()
             Button(action: {
@@ -180,59 +272,30 @@ struct TodoRowView: View {
                 }
             }) {
                 Image(systemName: todo.isFavorite ? "heart.fill" : "heart")
-                    .foregroundColor(.red)
+                    .foregroundColor(todo.isFavorite ? Color(hex: "#50E3C2") : Color(hex: "#777777"))
+                    .scaleEffect(todo.isFavorite ? 1.2 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.5, blendDuration: 0), value: todo.isFavorite)
             }
-            Text(todo.priority.rawValue.capitalized)
-                .foregroundColor(todo.priority == .high ? .red : .blue)
         }
-        .transition(.opacity)   // Apply transition on favorite toggle
+        .padding()
+        .background(Color.white)
+        .cornerRadius(10)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 5)
     }
 }
 
-@MainActor
-struct HomeView: View {
-    @Environment(\.modelContext) private var modelContext
-    @StateObject private var viewModel: TodoViewModel
-
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: TodoViewModel(modelContext: modelContext))
-    }
+struct FloatingActionButton: View {
+    let action: () -> Void
 
     var body: some View {
-        NavigationView {
-            VStack {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(viewModel.categories, id: \.self) { category in
-                            Button(action: { viewModel.selectedCategory = category }) {
-                                Text(category)
-                                    .padding()
-                                    .background(viewModel.selectedCategory == category ? Color.blue : Color.gray)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(10)
-                                    .scaleEffect(viewModel.selectedCategory == category ? 1.2 : 1.0)
-                                    // Animate scale effect for category selection
-                                    .animation(.easeInOut(duration: 0.3), value: viewModel.selectedCategory)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .id(viewModel.categories)  // Ensures layout knows about changes
-                .animation(.easeInOut, value: viewModel.selectedCategory) // Animates HStack layout changes
-
-                InputSectionView(viewModel: viewModel)
-
-                TodoListView(viewModel: viewModel)
-                    .listStyle(.plain)  // For full flexibility with animations
-            }
-            .animation(.easeInOut(duration: 0.3), value: viewModel.selectedCategory)
-            .navigationTitle("Todos")
-        }
-        .onAppear { // Example: Add an overall entry animation
-            withAnimation(.easeInOut(duration: 1.0)) {
-                self.viewModel.selectedCategory = self.viewModel.categories.first!
-            }
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 60, height: 60)
+                .background(Color(hex: "#4A90E2"))
+                .clipShape(Circle())
+                .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
         }
     }
 }
@@ -259,12 +322,16 @@ struct FavoritesView: View {
                 } else {
                     List {
                         ForEach(favoriteTodos) { todo in
-                            TodoRowView(todo: todo)
-                                .transition(.opacity)
-                                .animation(.spring(), value: todo.isFavorite)
+                            TodoCardView(todo: todo, viewModel: TodoViewModel(modelContext: modelContext))
+                                .transition(.asymmetric(
+                                    insertion: .opacity.combined(with: .move(edge: .leading)),
+                                    removal: .opacity.combined(with: .move(edge: .trailing))
+                                ))
+                                .animation(.spring(response: 0.5, dampingFraction: 0.7, blendDuration: 0.5), value: todo.isFavorite)
                         }
                         .onDelete(perform: deleteFavoriteTodos)
                     }
+                    .animation(.easeInOut(duration: 0.5), value: favoriteTodos) // Animates list changes
                 }
             }
             .navigationTitle("Favorites")
@@ -273,35 +340,41 @@ struct FavoritesView: View {
     }
 
     private func deleteFavoriteTodos(at offsets: IndexSet) {
-        offsets.map { favoriteTodos[$0] }.forEach(modelContext.delete)
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error deleting favorite todos: \(error)")
+        withAnimation {
+            offsets.map { favoriteTodos[$0] }.forEach(modelContext.delete)
+            do {
+                try modelContext.save()
+            } catch {
+                print("Error deleting favorite todos: \(error)")
+            }
         }
     }
 }
 
-struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-
-    var body: some View {
-        TabView {
-            HomeView(modelContext: modelContext)
-                .tabItem {
-                    Label("Home", systemImage: "house")
-                }
-
-            FavoritesView()
-                .tabItem {
-                    Label("Favorites", systemImage: "heart")
-                }
-
-            Text("Settings")
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
+// MARK: - Helper Extension
+extension Color {
+    init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let a, r, g, b: UInt64
+        switch hex.count {
+        case 3: // RGB (12-bit)
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6: // RGB (24-bit)
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8: // ARGB (32-bit)
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
         }
+        self.init(
+            .sRGB,
+            red: Double(r) / 255,
+            green: Double(g) / 255,
+            blue: Double(b) / 255,
+            opacity: Double(a) / 255
+        )
     }
 }
 
